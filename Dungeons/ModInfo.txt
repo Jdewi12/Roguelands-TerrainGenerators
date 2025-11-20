@@ -1,0 +1,1 @@
+Replaces the level generator for planets with custom procedural terrain generators depending on the planet. Not perfectly compatible with custom planet mods (replaces any vanilla-style planets with the "caves" generator, with the chunks being white). Works with Minimap.

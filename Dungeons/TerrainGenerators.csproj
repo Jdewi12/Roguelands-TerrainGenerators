@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <ImportGroup>
+    <Import Project="../GamePaths.xml" />
+  </ImportGroup>
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{f7136740-b46e-4ded-9b6d-8115f695c9ae}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TerrainGenerators</RootNamespace>
+    <AssemblyName>TerrainGenerators</AssemblyName>
+    <TargetFrameworks>net35</TargetFrameworks>
+    <FileAlignment>512</FileAlignment>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Configurations>Release</Configurations>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net35|AnyCPU'">
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="DotNetZip">
+      <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\DotNetZip.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GadgetCore">
+      <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\GadgetCore.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Minimap">
+      <HintPath>..\..\Minimap\Minimap\Release\Minimap.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ModInfo.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	<GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
+		<Output TaskParameter="Assemblies" ItemName="AssemblyInfo" />
+	</GetAssemblyIdentity>
+	<PropertyGroup>
+		<VersionInfo>$([System.Text.RegularExpressions.Regex]::Replace(&quot;%(AssemblyInfo.Version)&quot;, &quot;^(.+?)(\.0+)+$&quot;, &quot;$1&quot;))</VersionInfo>
+	</PropertyGroup>
+    <Delete Files="$(GamePath)GadgetCore\Mods\$(AssemblyName).zip" />
+    <Delete Files="$(TargetDir)$(AssemblyName).zip" />
+    <Exec Command="&quot;C:\Program Files\7-Zip\7z.exe&quot; a -tzip &quot;$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip&quot; &quot;$(TargetDir)*&quot; -x!&quot;$(AssemblyName).zip&quot;" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip" DestinationFolder="$(GamePath)GadgetCore\Mods\" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
