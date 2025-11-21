@@ -148,7 +148,7 @@ namespace TerrainGenerators.Generators
 
         public static void Tunnel(Vector2Int position1, Vector2Int position2, int radius1, int radius2, ref bool[,] grid)
         {
-            if (radius1 == radius2 && radius1 == 0) // if both radii are 0
+            if (radius1 <= 0 && radius2 <= 0)
                 return;
             int x1 = position1.x;
             int y1 = position1.y;
