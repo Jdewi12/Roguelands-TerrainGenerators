@@ -186,10 +186,12 @@ namespace TerrainGenerators.Patches
                 TerrainGenerators.RPCHandler = ((GameObject)Network.Instantiate(Resources.Load("Jdewi/RPCHandler"), Vector3.zero, Quaternion.identity, 0))
                     .GetComponent<NetworkView>();
             int seed = UnityEngine.Random.Range(0, int.MaxValue);
-            
+
             // AllBuffered includes self
+#pragma warning disable CS0618 // Type or member is obsolete
             TerrainGenerators.RPCHandler.RPC(nameof(RPCHandler.GenerateWorldClient),RPCMode.AllBuffered, seed, SpawnerScript.curBiome);
-            //GenerateWorldClient(seed, SpawnerScript.curBiome); // generates walls and picks the generator
+#pragma warning restore CS0618 // Type or member is obsolete
+                              //GenerateWorldClient(seed, SpawnerScript.curBiome); // generates walls and picks the generator
             CurrentGenerator.PopulateLevel(RNG);
 
             /*

@@ -7,7 +7,7 @@ using TerrainGenerators.Helpers;
 
 namespace TerrainGenerators.Generators
 {
-    public class Rooms : GeneratorBase
+    public class Rooms : GeneratorBase // TODO: UNFINISHED!
     {
         public override bool[,] WallsGrid => wallsGrid;
         private bool[,] wallsGrid;

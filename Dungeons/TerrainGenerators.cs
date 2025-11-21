@@ -24,29 +24,14 @@ namespace TerrainGenerators
         public static Dictionary<string, Texture2D> OtherTextures = new Dictionary<string, Texture2D>();
         public static NetworkView RPCHandler;
 
-        public const string MOD_VERSION = "1.1"; // Set this to the version of your mod.
-        public const string CONFIG_VERSION = "1.0"; // Increment this whenever you change your mod's config file.
+        public const string MOD_VERSION = "1.2";
+        public const string CONFIG_VERSION = "1.0";
 
         internal static MinimapAPI MinimapAPI;
 
-        //Dictionary<int, string> replaceGenerators = new Dictionary<int, string>(); // todo: unused
-
-        // generator parameters:
-        // - string Name
-        // - int Width
-        // - int Height
-        // - int BlockSize
-        // - int GridWidth
-        // - int GridHeight
-        // - List<Spawn> GroundSpawns
-        // - List<Spawn> AirSpawns
-        
-        // Spawns would have to be defined via code to allow for spawning conditions and special positioning
-
-
         protected override void LoadConfig()
         {
-            logger = base.Logger;
+            InternalLogger = base.Logger;
             Log("TerrainGenerators V" + MOD_VERSION);
             Config.Load();
 
@@ -58,12 +43,6 @@ namespace TerrainGenerators
                 Config.WriteString("ConfigVersion", CONFIG_VERSION, comments: "The Config Version (not to be confused with mod version)");
             }
 
-            // Do stuff with `Config`
-            /*
-            replaceGenerators[0] = Config.ReadString("Desolate Canyon", "Canyon", comments: "Overwrite Vanilla Generation");
-            replaceGenerators[1] = Config.ReadString("Deep Jungle", "Jungle");
-            */
-
             Config.Save();
         }
 
@@ -72,18 +51,12 @@ namespace TerrainGenerators
             return "Adds terrain generators."; // TODO: Write a better gadget description
         }
 
-        private static GadgetCore.GadgetLogger logger;
+        internal static GadgetLogger InternalLogger;
         
         internal static void Log(string text)
         {
-            logger.Log(text);
-        }
-
-        protected override void PrePatch()
-        {
-            
-        }
-        
+            InternalLogger.Log(text);
+        }        
 
         IEnumerator SetAllPortalUses()
         {
@@ -273,7 +246,6 @@ namespace TerrainGenerators
                         GeneratedTextures.Add(biomeID, innerDict);
                     }
                 }
-
             }
             Log("Generated textures for " + Biomes.Count + " planet(s).");
         }

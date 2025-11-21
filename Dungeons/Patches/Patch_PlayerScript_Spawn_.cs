@@ -31,10 +31,8 @@ namespace TerrainGenerators.Patches
                         //TerrainGenerators.Log("Found " + type.Name);
                         yield return type.GetMethod("MoveNext", BindingFlags.Public | BindingFlags.Instance);
                     }
-
                 }
             }
-
             yield return typeof(PlayerScript).GetMethod(nameof(PlayerScript.Treaty), BindingFlags.Public | BindingFlags.Instance);            
         }
 
@@ -43,7 +41,7 @@ namespace TerrainGenerators.Patches
         [HarmonyTranspiler]
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase __originalMethod)
         {
-            //TerrainGenerators.Log("Patch on " + __originalMethod.Name);
+            TerrainGenerators.Log("Patching " + __originalMethod.Name);
             List<CodeInstruction> codes = instructions.ToList();
             for (int i = 0; i < codes.Count - 3; i++)
             {
@@ -78,9 +76,7 @@ namespace TerrainGenerators.Patches
                                     //TerrainGenerators.Log("Replaced pop");
                                     break;
                                 }
-                                
                             }
-
                             //TerrainGenerators.Log("Patched spawn of " + codes[i].operand);
                             goto End;
                         }
@@ -136,11 +132,8 @@ namespace TerrainGenerators.Patches
                 return closestToTarget.Value;
             }
             // else
-            {
-                TerrainGenerators.Log("No walls on planet " + SpawnerScript.curBiome + " before boss spawn pos requested. Need to fix that.");
-                return playerWorldPos + targetDistance * new Vector3(0.8f, 0.2f);
-            }
-            
+            TerrainGenerators.InternalLogger.LogError("No walls on planet " + SpawnerScript.curBiome + " before boss spawn pos requested!");
+            return playerWorldPos + targetDistance * new Vector3(0.8f, 0.2f);
         }
 
         public static void AddSpawnToList(GameObject spawn)

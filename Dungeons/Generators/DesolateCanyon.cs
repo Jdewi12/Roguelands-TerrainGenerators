@@ -11,9 +11,6 @@ namespace TerrainGenerators.Generators
 {
     public class DesolateCanyon : GeneratorBase
     {
-        public override List<Spawnable> AdditionalGroundSpawns => null;
-        public override List<Spawnable> AdditionalAirSpawns => null;
-
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
         //public override Color MinimapWallsColor => new Color(0f, 1f, 0f);

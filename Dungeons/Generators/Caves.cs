@@ -13,18 +13,6 @@ namespace TerrainGenerators.Generators
     public class Caves : GeneratorBase
     {
         // todo: Ceiling/wall spawns?
-
-        /// <summary>
-        /// Not currently used
-        /// </summary>
-        public override List<Spawnable> AdditionalGroundSpawns => additionalGroundSpawns;
-        private List<Spawnable> additionalGroundSpawns;
-        /// <summary>
-        /// Not currently used
-        /// </summary>
-        public override List<Spawnable> AdditionalAirSpawns => additionalAirSpawns;
-        private List<Spawnable> additionalAirSpawns;
-
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
         public override Color MinimapWallsColor => minimapWallsColor;
@@ -37,14 +25,12 @@ namespace TerrainGenerators.Generators
         bool[,] wallsGrid;
 
 
-        public Caves(Color? minimapWallsColor = null, List<Spawnable> additionalGroundSpawns = null, List<Spawnable> additionalAirSpawns = null, int gridWidth = 26, int gridHeight = 16)
+        public Caves(Color? minimapWallsColor = null, int gridWidth = 26, int gridHeight = 16)
         {
             if (minimapWallsColor != null)
                 this.minimapWallsColor = minimapWallsColor.Value;
             else
                 this.minimapWallsColor = GetMinimapColor();
-            this.additionalGroundSpawns = additionalGroundSpawns;
-            this.additionalAirSpawns = additionalAirSpawns;
             this.gridWidth = gridWidth;
             this.gridHeight = gridHeight;
         }
@@ -63,7 +49,7 @@ namespace TerrainGenerators.Generators
                 // x^2 distribution; makes large radius rare
                 int radius = Mathf.RoundToInt(Mathf.Pow(rng.Next(1f, maxRadiusSqrt), 2));
                 // pick a random x/y position while making sure we don't go outside with the selected radius
-                unconnectedRooms.Add(new Node(new Vector2(
+                unconnectedRooms.Add(new Node(new Vector2Int(
                     x: rng.Next(radius, GridWidth - 1 - radius),
                     y: rng.Next(radius, GridHeight - 1 - radius)),
                     radius));
@@ -75,8 +61,6 @@ namespace TerrainGenerators.Generators
                 unconnectedRooms[0] // pick the first room as the starting point
             };
             unconnectedRooms.RemoveAt(0);
-
-            //int loopsAllowed = 10_000; // just in case
 
             while (unconnectedRooms.Count > 0)// && loopsAllowed > 0)
             {
@@ -112,7 +96,7 @@ namespace TerrainGenerators.Generators
             // draw the rooms and tunnels
             foreach(Node room in connectedRooms)
             {
-                Cave(room.Position.RoundToInt(), room.Radius, ref wallsGrid);
+                Cave(room.Position, room.Radius, ref wallsGrid);
                 if (room.Parent != null)
                     Tunnel(room.Position, room.Parent.Position, room.Radius, room.Parent.Radius, ref wallsGrid);
             }
@@ -140,15 +124,12 @@ namespace TerrainGenerators.Generators
                 }
             }
             CreateWalls(wallsGrid);
-
             CreateMinimapIfPresent(wallsGrid);
         }
 
         public override void PopulateLevel(RNG rng)
         {
             InstanceTracker.GameScript.StartCoroutine(SpawnVanillaSpawnables(rng, wallsGrid));
-            //SpawnGroundSpawnables(rng, wallsGrid);
-            //SpawnAirSpawnables(rng, wallsGrid);
 
         }
 
@@ -165,195 +146,154 @@ namespace TerrainGenerators.Generators
                 }
         }
 
-        public static void Tunnel(Vector2 position1, Vector2 position2, int radius1, int radius2, ref bool[,] grid)
+        public static void Tunnel(Vector2Int position1, Vector2Int position2, int radius1, int radius2, ref bool[,] grid)
         {
-            float x1 = position1.x;
-            float y1 = position1.y;
-            float x2 = position2.x;
-            float y2 = position2.y;
-            float thickness = (radius1 + radius2) / 2f;
+            if (radius1 == radius2 && radius1 == 0) // if both radii are 0
+                return;
+            int x1 = position1.x;
+            int y1 = position1.y;
+            int x2 = position2.x;
+            int y2 = position2.y;
+            int thickness = (radius1 + radius2) / 2;
+            if (thickness < 1)
+                thickness = 1;
 
-            float dX = x2 - x1;
-            float dY = y2 - y1;
-            float incX = Mathf.Sign(Mathf.Sign(dX) + 0.5f);
-            float incY = Mathf.Sign(Mathf.Sign(dY) + 0.5f);
-            if (dX < 0)
-                dX = -dX;
-            if (dY < 0)
-                dY = -dY;
+            int xLen = x2 - x1;
+            int yLen = y2 - y1;
+            int dirX = xLen >= 0 ? -1 : 1;
+            int dirY = yLen >= 0 ? -1 : 1;
+            if (xLen < 0)
+                xLen = -xLen;
+            if (yLen < 0)
+                yLen = -yLen;
 
-            float len;
-            float sd0x;
-            float sd0y;
-            float dd0x;
-            float dd0y;
+            int primaryLength; // The primary axis length
+            int stepOuterX0;
+            int stepOuterY0;
+            int stepOuterX1;
+            int stepOuterY1;
 
-            float sd1x;
-            float sd1y;
-            float dd1x;
-            float dd1y;
+            int stepInnerX0;
+            int stepInnerY0;
+            int stepInnerX1 = dirX;
+            int stepInnerY1 = dirY;
 
-            float ku;
-            float kv;
-            float kd;
+            int errorStepX = 2 * xLen;
+            int errorStepY = 2 * yLen;
+            int errorStepDiagonal;
 
-            float kt; // threshold for error term
-            if (dX > dY)
+            int errorThreshold;
+            
+            if (xLen > yLen) // line is primary horizontal
             {
-                len = dX;
-                sd0x = 0;
-                sd0y = incY;
-                dd0x = -incX;
-                dd0y = incY;
+                // Outer loop steps
+                primaryLength = xLen;
+                stepOuterX0 = 0;
+                stepOuterY0 = dirY;
+                stepOuterX1 = -dirX;
+                stepOuterY1 = dirY;
 
-                sd1x = incX;
-                sd1y = 0;
-                dd1x = incX;
-                dd1y = incY;
+                // Inner loop steps
+                stepInnerX0 = dirX;
+                stepInnerY0 = 0;
+                errorStepDiagonal = errorStepY - errorStepX;
 
-                ku = 2 * dX;
-                kv = 2 * dY;
-                kd = kv - ku;
-
-                kt = dX - kv;
+                errorThreshold = xLen - errorStepY;
             }
-            else
+            else // line is primarily vertical
             {
-                len = dY;
-                sd0x = incX;
-                sd0y = 0;
-                dd0x = incX;
-                dd0y = -incY;
+                primaryLength = yLen;
+                stepOuterX0 = dirX;
+                stepOuterY0 = 0;
+                stepOuterX1 = dirX;
+                stepOuterY1 = -dirY;
 
-                sd1x = 0;
-                sd1y = incY;
-                dd1x = incX;
-                dd1y = incY;
+                stepInnerX0 = 0;
+                stepInnerY0 = dirY;
+                errorStepDiagonal = errorStepY - errorStepX;
 
-                ku = 2 * dY;
-                kv = 2 * dX;
-                kd = kv - ku;
-
-                kt = dY - kv;
+                errorThreshold = yLen - errorStepY;
             }
 
-            float tk = 2 * thickness * Mathf.Sqrt(dX * dX + dY * dY);
-            float d0 = 0; // outer loop error term
-            float d1 = 0; // inner loop error term
-            float dd = 0; // thickness error term
+            float totalThickness = 2 * thickness * Mathf.Sqrt(xLen * xLen + yLen * yLen); // the "area" of the line (thickness*length), doubled because
+                                                                                          // errorStepX and errorStepY are too.
+            int outerError = 0;
+            int innerLoopError = 0;
+            int thicknessDone = 0;
 
-            while (dd < tk)
+            while (thicknessDone < totalThickness)
             {
-                BresenhamLineDraw(x1, y1, d1, len, sd1x, sd1y, dd1x, dd1y, d1, kt, kv, kd, ref grid);
-                if (d0 < kt)
+                BresenhamLineDraw(x1, y1, primaryLength, stepInnerX0, stepInnerY0, stepInnerX1, stepInnerY1, innerLoopError, errorThreshold, errorStepY, errorStepDiagonal, ref grid);
+                if (outerError < errorThreshold)
                 {
-                    x1 += sd0x;
-                    y1 += sd0y;
+                    x1 += stepOuterX0;
+                    y1 += stepOuterY0;
                 }
                 else
                 {
-                    dd += kv;
-                    d0 -= ku;
-                    if (d1 < kt)
+                    thicknessDone += errorStepY;
+                    outerError -= errorStepX;
+                    if (innerLoopError < errorThreshold)
                     {
-                        x1 += dd0x;
-                        y1 += dd0y;
-                        d1 -= kv;
+                        x1 += stepOuterX1;
+                        y1 += stepOuterY1;
+                        innerLoopError -= errorStepY;
                     }
                     else
                     {
-                        if (dX > dY)
-                            x1 += dd0x;
+                        if (xLen > yLen)
+                            x1 += stepOuterX1;
                         else
-                            y1 += dd0y;
-                        d1 = d1 - kd;
-                        if (dd > tk)
-                            return; // breakout on the extra line (?????)
-                        BresenhamLineDraw(x1, y1, d1, len, sd1x, sd1y, dd1x, dd1y, d1, kt, kv, kd, ref grid);
-                        if (dX > dY)
-                            y1 += dd0y;
+                            y1 += stepOuterY1;
+                        innerLoopError -= errorStepDiagonal;
+                        if (thicknessDone > totalThickness)
+                            return; // breakout on the extra line (?)
+                        BresenhamLineDraw(x1, y1, primaryLength, stepInnerX0, stepInnerY0, stepInnerX1, stepInnerY1, innerLoopError, errorThreshold, errorStepY, errorStepDiagonal, ref grid);
+                        if (xLen > yLen)
+                            y1 += stepOuterY1;
                         else
-                            x1 += dd0x;
+                            x1 += stepOuterX1;
                     }
                 }
 
-                dd += ku;
-                d0 += kv;
+                thicknessDone += errorStepX;
+                outerError += errorStepY;
 
             }
-
-
         }
 
-        public static void BresenhamLineDraw(float x, float y, float d, float len, float sd1x, float sd1y, float dd1x, float dd1y, float d1, float kt, float kv, float kd, ref bool[,] grid)
+        public static void BresenhamLineDraw(int x, int y, int primaryLength, int stepInnerX0, int stepInnerY0, int stepInnerX1, int stepInnerY1, int innerLoopError, int errorThreshold, int errorStepY, int errorStepDiagonal, ref bool[,] grid)
         {
-            for (int i = 0; i <= len; i++)
+            for (int i = 0; i <= primaryLength; i++)
             {
-                //grid[Mathf.RoundToInt(x), Mathf.RoundToInt(y)] = false;
-                grid.SetWall(Mathf.RoundToInt(x), Mathf.RoundToInt(y), false);
-                if (d1 <= kt)
+                grid.SetWall(x, y, false);
+                if (innerLoopError <= errorThreshold)
                 {
-                    x += sd1x;
-                    y += sd1y;
-                    d1 += kv;
+                    x += stepInnerX0;
+                    y += stepInnerY0;
+                    innerLoopError += errorStepY;
                 }
                 else
                 {
-                    x += dd1x;
-                    y += dd1y;
-                    d1 += kd;
+                    x += stepInnerX1;
+                    y += stepInnerY1;
+                    innerLoopError += errorStepDiagonal;
                 }
             }
         }
 
         public class Node
         {
-            public Vector2 Position;
+            public Vector2Int Position;
             public int Radius;
             public Node Parent;
 
-            public Node(Vector2 position, int radius, Node connection = null)
+            public Node(Vector2Int position, int radius, Node connection = null)
             {
                 this.Position = position;
                 this.Radius = radius;
                 this.Parent = connection;
             }
         }
-
-    //    new List<Spawnable>
-    //    {
-    //        /*new Spawn("rockspider3 or slimey", 0.3*0.75*0.4*0.5, 0.375f),*/
-                        
-    //        /*new Spawn("rockspider3 or glibglob", 0.3*0.75*0.25*0.333, 0.375f),*/
-    //        /*new Spawn("rockspider3 or slimey", 0.3*0.75*0.25*0.667, 0.375f),*/
-    //        /*new Spawn("rockspider3 or glibglob and glibglob2", 0.3*0.25, 0.375f),*/
-
-    //        new Spawnable("obj/chest", 0.01*14/15, 0.375f),
-    //        new Spawnable("obj/chestGold", 0.01/15, 0.375f),
-
-    //        new Spawnable("", 0.2),
-
-    //        new Spawnable("obj/tree2", 0.1, 0.375f),
-
-    //        new Spawnable("obj/ore1", 0.2*0.5, 0.375f),
-    //        new Spawnable("obj/oreBig0", 0.2*0.5, 0.375f),
-
-    //        new Spawnable("obj/bugspot0", 0.05, 0.375f),
-
-    //        /*new Spawn("npc/perceval", 0.04*0.333),*/
-    //        new Spawnable("obj/oreBig0", 0.04*0.667),
-
-    //        new Spawnable("obj/relic", 0.01*0.5, 0.375f),
-    //    };
-
-    //public override List<Spawnable> AirSpawns => new List<Spawnable>
-    //    {
-    //        /*new Spawn("rockspider or sploopy", 0.3*0.75*0.35*0.333, 0.375f),*/
-    //        new Spawnable("e/rockspider", 0.3*0.75*0.35*0.667),
-    //        new Spawnable("e/rockspider", 0.3*0.75*0.4*0.5),
-    //        new Spawnable("e/gruu", 0.01*0.5),
-    //        /*new Spawn("hazyellow2 or haz2", 0.09, 0.375f),*/
-    //        new Spawnable("", 0.72) // figure out what this should actually be
-    //    };
-}
+    }
 }

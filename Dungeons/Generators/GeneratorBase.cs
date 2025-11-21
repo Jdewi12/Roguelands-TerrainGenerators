@@ -21,8 +21,8 @@ namespace TerrainGenerators.Generators
         public virtual Color MinimapWallsColor { get => GetMinimapColor(); }
         public abstract Vector2Int PlayerSpawn { get; } // grid position
 
-        public virtual int minimapViewportWidth => GridWidth - 3;
-        public virtual int minimapViewportHeight => GridHeight - 3;
+        public virtual int MinimapViewportWidth => GridWidth - 3;
+        public virtual int MinimapViewportHeight => GridHeight - 3;
         //public virtual List<Vector2Int> SpawnablePositions { get; } = new List<Vector2Int>();
         public virtual List<GameObject> Spawned { get; } = new List<GameObject>();
         public virtual List<Vector2Int> TeleporterPositions { get; } = new List<Vector2Int>();
@@ -107,8 +107,8 @@ namespace TerrainGenerators.Generators
                 rightWorld: (minimapWidth - padding - 0.5f) * BlockSize,
                 topWorld: (minimapHeight - padding - 1.5f) * BlockSize, 
                 botWorld: (-padding - 1.5f) * BlockSize, 
-                mapViewportWidth: minimapViewportWidth,
-                mapViewPortHeight: minimapViewportHeight);
+                mapViewportWidth: MinimapViewportWidth,
+                mapViewPortHeight: MinimapViewportHeight);
         }
     
 
@@ -282,6 +282,7 @@ namespace TerrainGenerators.Generators
 
             GameScript.endPortal[id] = (GameObject)Network.Instantiate((GameObject)Resources.Load("portal"), new Vector3(worldX, worldY + 1.75f, -1f), Quaternion.identity, 0);
             GameScript.endPortalUA[id] = GameScript.endPortal[id].transform.GetChild(0).gameObject;
+#pragma warning disable CS0618 // Type or member is obsolete
             GameScript.endPortal[id].GetComponent<NetworkView>().RPC("Activate", RPCMode.All, new object[0]);
             GameScript.endPortalUA[id].GetComponent<NetworkView>().RPC("Set", RPCMode.AllBuffered, new object[]
             {
@@ -289,6 +290,7 @@ namespace TerrainGenerators.Generators
                 0,
                 id
             });
+#pragma warning restore CS0618 // Type or member is obsolete
             TeleporterPositions.Add(new Vector2Int(x, y));
             Spawned.Add(GameScript.endPortal[id]);
         }
@@ -344,12 +346,6 @@ namespace TerrainGenerators.Generators
 
                 DoVanillaGroundSpawn(spawnSpot, rng);
             }
-
-
-
-
-                                
-
         }
 
         public virtual void DoVanillaGroundSpawn(Vector2Int spawnSpot, RNG rng)

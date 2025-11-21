@@ -11,10 +11,6 @@ namespace TerrainGenerators.Generators
 {
     public class MagiciteLike : GeneratorBase
     {
-        public override List<Spawnable> AdditionalGroundSpawns => throw new NotImplementedException();
-
-        public override List<Spawnable> AdditionalAirSpawns => throw new NotImplementedException();
-
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
         private int mazeCols = 5;
@@ -26,8 +22,8 @@ namespace TerrainGenerators.Generators
         private int outerPadding = 3;
         public override int GridWidth => mazeCols * colWidth; // 35
         public override int GridHeight => mazeRows * rowHeight; // 9//12
-        public override int minimapViewportWidth => Mathf.Clamp(Mathf.RoundToInt(minimapViewportHeight * 1.5f), 0, GridWidth + outerPadding);
-        public override int minimapViewportHeight => GridHeight + outerPadding;
+        public override int MinimapViewportWidth => Mathf.Clamp(Mathf.RoundToInt(MinimapViewportHeight * 1.5f), 0, GridWidth + outerPadding);
+        public override int MinimapViewportHeight => GridHeight + outerPadding;
         public override bool[,] WallsGrid => wallsGrid;
         bool[,] wallsGrid; 
 
