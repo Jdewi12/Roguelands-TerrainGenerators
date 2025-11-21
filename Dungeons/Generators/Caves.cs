@@ -43,20 +43,20 @@ namespace TerrainGenerators.Generators
             float maxRadius = Mathf.Clamp(Mathf.Min(GridWidth, GridHeight) - 2, min: 1, max: 4);
             float maxRadiusSqrt = Mathf.Sqrt(maxRadius);
 
-            List<Node> unconnectedRooms = new List<Node>();
+            List<OneWayGridNode> unconnectedRooms = new List<OneWayGridNode>();
             for (int i = 0; i < numRooms; i++)
             {
                 // x^2 distribution; makes large radius rare
                 int radius = Mathf.RoundToInt(Mathf.Pow(rng.Next(1f, maxRadiusSqrt), 2));
                 // pick a random x/y position while making sure we don't go outside with the selected radius
-                unconnectedRooms.Add(new Node(new Vector2Int(
+                unconnectedRooms.Add(new OneWayGridNode(new Vector2Int(
                     x: rng.Next(radius, GridWidth - 1 - radius),
                     y: rng.Next(radius, GridHeight - 1 - radius)),
                     radius));
 
             }
 
-            List<Node> connectedRooms = new List<Node>()
+            List<OneWayGridNode> connectedRooms = new List<OneWayGridNode>()
             {
                 unconnectedRooms[0] // pick the first room as the starting point
             };
@@ -64,15 +64,14 @@ namespace TerrainGenerators.Generators
 
             while (unconnectedRooms.Count > 0)// && loopsAllowed > 0)
             {
-                //loopsAllowed--; 
-                Node nearestUnconnected = null;
-                Node nearestConnected = null;
+                OneWayGridNode nearestUnconnected = null;
+                OneWayGridNode nearestConnected = null;
                 float minDistance = float.MaxValue;
 
                 // Find closest unconnected room to any connected room
-                foreach (Node unconnectedRoom in unconnectedRooms)
+                foreach (OneWayGridNode unconnectedRoom in unconnectedRooms)
                 {
-                    foreach (Node connectedRoom in connectedRooms)
+                    foreach (OneWayGridNode connectedRoom in connectedRooms)
                     {
                         float distance = Vector2.Distance(unconnectedRoom.Position, connectedRoom.Position);
                         if (distance < minDistance)
@@ -94,7 +93,7 @@ namespace TerrainGenerators.Generators
                     wallsGrid[x, y] = true;
 
             // draw the rooms and tunnels
-            foreach(Node room in connectedRooms)
+            foreach(OneWayGridNode room in connectedRooms)
             {
                 Cave(room.Position, room.Radius, ref wallsGrid);
                 if (room.Parent != null)
@@ -279,20 +278,6 @@ namespace TerrainGenerators.Generators
                     y += stepInnerY1;
                     innerLoopError += errorStepDiagonal;
                 }
-            }
-        }
-
-        public class Node
-        {
-            public Vector2Int Position;
-            public int Radius;
-            public Node Parent;
-
-            public Node(Vector2Int position, int radius, Node connection = null)
-            {
-                this.Position = position;
-                this.Radius = radius;
-                this.Parent = connection;
             }
         }
     }

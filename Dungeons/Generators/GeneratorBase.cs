@@ -28,6 +28,8 @@ namespace TerrainGenerators.Generators
         public virtual List<Vector2Int> TeleporterPositions { get; } = new List<Vector2Int>();
         public Chunk ChunkScript = null;
 
+        public static readonly FieldInfo NetworkStuffField = typeof(Chunk).GetField("networkStuff", BindingFlags.Instance | BindingFlags.NonPublic);
+
         public static Color GetMinimapColor()
         {
             int id = SpawnerScript.curBiome;
@@ -151,7 +153,7 @@ namespace TerrainGenerators.Generators
                 if (rend != null)
                     centreY = rend.bounds.center.y;
                 float z = 0;
-                if (name == "npc/ringabolt") //TODO: Other NPCs too.
+                if (name == "npc/ringabolt") //TODO: Other NPCs too?
                 {
                     if (SpawnerScript.ringabolt == 0)
                     {
@@ -377,85 +379,6 @@ namespace TerrainGenerators.Generators
                 ChunkScript.SpawnBiomeSlot(SpawnerScript.curBiome, 0, 0);
             }
         }
-
-        /*
-        public virtual void SpawnGroundSpawnables(RNG rng,bool[,] wallsGrid)
-        {
-            int width = wallsGrid.GetLength(0);
-            int height = wallsGrid.GetLength(1);
-            int[] xIndices = new int[width];
-            int[] yIndices = new int[height];
-            // creates a shuffled array of indices
-            for (int x = 0; x < width; x++)
-            {
-                int index = rng.Next(0, x);
-                xIndices[x] = xIndices[index];
-                xIndices[index] = x;
-            }
-            for (int y = 0; y < height; y++) 
-            {
-                int index = rng.Next(0, y);
-                yIndices[y] = yIndices[index];
-                yIndices[index] = y;
-            }
-            // loop through the grid in the shuffled order
-            // //TODO: This picks a random column then goes through all the y positions in a random order,
-            // rather than going through the whole grid in a random order
-            for (int i = 0; i < width; i++)
-            {
-                int x = xIndices[i];
-                for (int j = 0; j < wallsGrid.GetLength(1) - 1; j++) 
-                {
-                    int y = yIndices[j];
-                    if (x == PlayerSpawn.x && (y == PlayerSpawn.y)) // the player spawns here
-                        continue;
-                    else if (TeleporterPositions.Contains(new Vector2Int(x, y))) // there is a teleporter here
-                        continue;
-                    if (wallsGrid.IsWall(x, y) && !wallsGrid.IsWall(x, y + 1)) // if this tile is ground and the one above is air
-                    {
-                        if(Vector2Int.SqrDistance(new Vector2Int(x, y), PlayerSpawn) > 2*2) // only spawn if more than 2 chunks away
-                        {
-                            if (TeleporterPositions.Count == 0)
-                            {
-                                SpawnTeleporter(x, y, 3);
-                                // try to spawn the back to ship teleporter, named "Port3"
-                            }
-                            else if (TeleporterPositions.Count == 1)
-                            {
-                                SpawnTeleporter(x, y, 0);
-                                // try to spawn the next planet teleporter in slot 1, named "Port0"
-                            }
-                            else if (TeleporterPositions.Count < 4)
-                            {
-
-                                SpawnTeleporter(x, y, TeleporterPositions.Count - 1);
-                                // try to spawn the next planet teleporter in slots 2-3, named "Port1" and "Port2"
-                            }
-                            else
-                            {
-
-                                float totalWeights = 0;
-                                foreach (Spawnable spawn in AdditionalGroundSpawns)
-                                    totalWeights += spawn.SpawnWeight;
-                                float r = rng.Next(0, totalWeights);
-                                totalWeights = 0;
-                                foreach (Spawnable spawn in AdditionalGroundSpawns)
-                                {
-                                    totalWeights += spawn.SpawnWeight;
-                                    if (totalWeights >= r)
-                                    {
-                                        SpawnThing(rng, spawn.Name, x, y, spawn.YOffset);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        */
-        public static readonly FieldInfo NetworkStuffField = typeof(Chunk).GetField("networkStuff", BindingFlags.Instance | BindingFlags.NonPublic);
     }
 
     public class Spawnable

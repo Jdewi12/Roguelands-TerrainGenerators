@@ -64,8 +64,6 @@ namespace TerrainGenerators.Generators
                     maxX = rightOfCenter;
                 }
             }
-            int usableWidth = maxX - minX;
-
             int baseY = terrainHeights[GridWidth / 2]; // The lowest part of the parabola.
             int lastX = minX;
             int lastYIncrease = 0;

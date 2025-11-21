@@ -134,7 +134,6 @@ namespace TerrainGenerators.Generators
                     {
                         airCount++;
                     }
-
                 }
             }
         }
