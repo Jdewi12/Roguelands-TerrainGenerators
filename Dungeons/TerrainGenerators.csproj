@@ -81,8 +81,9 @@
 	<PropertyGroup>
 		<VersionInfo>$([System.Text.RegularExpressions.Regex]::Replace(&quot;%(AssemblyInfo.Version)&quot;, &quot;^(.+?)(\.0+)+$&quot;, &quot;$1&quot;))</VersionInfo>
 	</PropertyGroup>
-    <Delete Files="$(GamePath)GadgetCore\Mods\$(AssemblyName).zip" />
-    <Delete Files="$(TargetDir)$(AssemblyName).zip" />
+	<!-- note: This doesn't delete previous versions when VersionInfo changes! -->
+    <Delete Files="$(GamePath)GadgetCore\Mods\$(AssemblyName)_v$(VersionInfo).zip" />
+    <Delete Files="$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip" />
     <Exec Command="&quot;C:\Program Files\7-Zip\7z.exe&quot; a -tzip &quot;$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip&quot; &quot;$(TargetDir)*&quot; -x!&quot;$(AssemblyName).zip&quot;" />
     <Copy SourceFiles="$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip" DestinationFolder="$(GamePath)GadgetCore\Mods\" SkipUnchangedFiles="true" />
   </Target>

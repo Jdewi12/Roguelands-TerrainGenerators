@@ -8,7 +8,7 @@ namespace TerrainGenerators.Helpers
         public int Radius;
         public List<GridNode> Connections;
 
-        public GridNode(Vector2Int position, int radius, List<GridNode> connections = null)
+        public GridNode(Vector2Int position, int radius = 0, List<GridNode> connections = null)
         {
             this.Position = position;
             this.Radius = radius;
@@ -17,5 +17,7 @@ namespace TerrainGenerators.Helpers
             else
                 this.Connections = new List<GridNode>();
         }
+
+        public override string ToString() => $"({Position.x}, {Position.y})";
     }
 }
