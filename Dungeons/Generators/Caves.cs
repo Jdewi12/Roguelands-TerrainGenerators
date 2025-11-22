@@ -159,8 +159,8 @@ namespace TerrainGenerators.Generators
 
             int xLen = x2 - x1;
             int yLen = y2 - y1;
-            int dirX = xLen >= 0 ? -1 : 1;
-            int dirY = yLen >= 0 ? -1 : 1;
+            int dirX = xLen >= 0 ? 1 : -1;
+            int dirY = yLen >= 0 ? 1 : -1;
             if (xLen < 0)
                 xLen = -xLen;
             if (yLen < 0)
