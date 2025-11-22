@@ -14,7 +14,7 @@ namespace TerrainGenerators.Generators
     {
         public virtual List<Spawnable> AdditionalGroundSpawns { get; } // name, weight, (optional y-offset)
         public virtual List<Spawnable> AdditionalAirSpawns { get; } // name, weight, (optional y-offset)
-        public virtual int BlockSize { get; } = 16;
+        public virtual int BlockSize => Patch_SpawnerScript_World.BlockSize;
         public virtual int GridWidth { get; } = 32;
         public virtual int GridHeight { get; } = 24;
         public abstract bool[,] WallsGrid { get; }

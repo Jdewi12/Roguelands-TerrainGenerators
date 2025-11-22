@@ -19,14 +19,14 @@ namespace TerrainGenerators.Generators
         public override void GenerateWalls(RNG rng)
         {
             // max internal width/height of rooms
-            const int maxRoomWidth = 6;
-            const int maxRoomHeight = 8;
+            const int maxRoomWidth = 5;
+            const int maxRoomHeight = 6;
             const int numRoomsHorizontal = 3;
             const int numRoomsVertical = 2;
             const int horizontalPadding = 1;
             const int verticalPadding = 1;
-            const int worldWidth = numRoomsHorizontal * maxRoomWidth + (numRoomsHorizontal - 1) * horizontalPadding;
-            const int worldHeight = numRoomsVertical * maxRoomHeight + (numRoomsVertical - 1) * verticalPadding;
+            const int worldWidth = numRoomsHorizontal * (maxRoomWidth + horizontalPadding);
+            const int worldHeight = numRoomsVertical * (maxRoomHeight + verticalPadding);
 
             wallsGrid = new bool[worldWidth, worldHeight];
                 
@@ -41,26 +41,25 @@ namespace TerrainGenerators.Generators
             for (int i = 0; i < numRoomsHorizontal; i++)
             {
                 int startX = i * (maxRoomWidth + horizontalPadding);
-                if (i > 0)
-                {
+
                     TerrainGenerators.Log($"Starting vertical wall (i={i})");
-                    // create wall between rooms to the left of every room column except the leftmost one (i=0)
-                    for(int x = startX - horizontalPadding; x < startX; x++)
+                    // create wall between rooms to the right of every room column
+                    for(int x = startX + maxRoomWidth; x < startX + maxRoomWidth + horizontalPadding; x++)
                     {
                         for(int y = 0; y < worldHeight; y++)
                         {
                             wallsGrid[x, y] = true;
                         }
                     }
-                }
+                
                 for(int j = 0; j < numRoomsVertical; j++)
                 {
                     int startY = j * (maxRoomHeight + verticalPadding);
-                    if (i == 0 && j > 0)
+                    if (i == 0)
                     {
                         TerrainGenerators.Log($"Starting horizontal wall (j={j})");
-                        // create wall between rooms below every room row except the bottom one (j=0)
-                        for (int y = startY - verticalPadding; y < startY; y++)
+                        // create wall between rooms above every room row
+                        for (int y = startY + maxRoomHeight; y < startY + maxRoomHeight + verticalPadding; y++)
                         {
                             for (int x = 0; x < worldWidth; x++)
                             {
@@ -134,25 +133,46 @@ namespace TerrainGenerators.Generators
                 // connect them together and add the unconnected one and all its connections to connectedNodes
                 nearestUnconnected.Connections.Add(nearestConnected);
                 nearestConnected.Connections.Add(nearestUnconnected);
+                TerrainGenerators.Log($"Connected {nearestUnconnected} to {nearestConnected}");
                 AddAllConnectedNodes(nearestUnconnected);
+
                 // Clear a tunnel in wallsGrid between the two nodes (not any of the others in the room since those should already be connected).
-                int startY = Math.Min(nearestConnected.Position.y, nearestUnconnected.Position.y);
-                if (startY < 0)
-                    startY = 0;
-                int endY = Math.Max(nearestConnected.Position.y, nearestUnconnected.Position.y);
-                if (endY >= worldHeight)
-                    endY = worldHeight - 1;
-                int startX = Mathf.Min(nearestConnected.Position.x, nearestUnconnected.Position.x);
-                if (startX < 0)
-                    startX = 0;
-                int endX = Mathf.Max(nearestConnected.Position.x, nearestUnconnected.Position.x);
-                if (endX >= worldWidth)
-                    endX = worldWidth - 1;
-                for (int x = startX; x < endX + 1; x++)
+                int x1 = nearestConnected.Position.x;
+                int x2 = nearestUnconnected.Position.x;
+                int y1 = nearestConnected.Position.y;
+                int y2 = nearestUnconnected.Position.y;
+
+                if (rng.Next(0, 2) == 1)
                 {
-                    for (int y = startY; y < endY + 1; y++)
+                    ClearRectangle(x1, x2, y1, y1); // horizontal at y1
+                    ClearRectangle(x2, x2, y1, y2); // vertical at x2
+                }
+                else
+                {
+                    ClearRectangle(x1, x1, y1, y2); // vertical at x1
+                    ClearRectangle(x1, x2, y2, y2); // horizontal at y2
+                }
+                void ClearRectangle(int _x1, int _x2, int _y1, int _y2)
+                {
+                    if(_x2 < _x1)
                     {
-                        wallsGrid[x, y] = false;
+                        int tmp = _x2;
+                        _x2 = _x1;
+                        _x1 = tmp;
+                    }
+                    if (_y2 < _y1)
+                    {
+                        int tmp = _y2;
+                        _y2 = _y1;
+                        _y1 = tmp;
+                    }
+
+                    for (int x = _x1; x < _x2 + 1; x++)
+                    {
+                        for (int y = _y1; y < _y2 + 1; y++)
+                        {
+                            wallsGrid[x, y] = false;
+                        }
                     }
                 }
                 TerrainGenerators.Log("H");
@@ -160,11 +180,12 @@ namespace TerrainGenerators.Generators
             string s = "";
             for (int j = 0; j < worldHeight; j++)
             {
-                s += "\r\n";
+                string row = "\r\n";
                 for(int i = 0; i < worldWidth; i++)
                 {
-                    s = wallsGrid[i, j] ? "#" : "." + s; // prepend row because loop starts from bottom
+                    row += wallsGrid[i, j] ? "#" : "."; 
                 }
+                s = row + s; // prepend row because loop starts from bottom
             }
             TerrainGenerators.Log(s);
 
@@ -176,7 +197,7 @@ namespace TerrainGenerators.Generators
         {
             int width = endX - startX + 1;
             int height = endY - startY + 1;
-            switch (rng.Next(1, 3)) // upper bound exclusive
+            switch (rng.Next(1, 3 + 1)) // upper bound exclusive
             {
 
                 case 1:
@@ -184,6 +205,9 @@ namespace TerrainGenerators.Generators
                     break;
                 case 2:
                     CentreBlocksStaircase2(out topConnection, out botConnection);
+                    break;
+                case 3:
+                    ZigZagStaircase3(out topConnection, out botConnection);
                     break;
                 default:
                     throw new Exception("Case not handled!");
@@ -235,6 +259,7 @@ namespace TerrainGenerators.Generators
                 _botConnection = new GridNode(new Vector2Int(startX, startY));
                 _topConnection = new GridNode(new Vector2Int(stairTopX, endY + 1));
             }
+
             /* Floating platforms up the center of the room
                 ...
                 .#.
@@ -296,11 +321,53 @@ namespace TerrainGenerators.Generators
                 _botConnection = new GridNode(new Vector2Int(_botX, startY));
                 
             }
+
+            /*
+                ..#
+                #..
+                ..#
+                #..
+                ..#
+            */
+            void ZigZagStaircase3(out GridNode _topConnection, out GridNode _botConnection)
+            {
+                int leftCentreX = startX + (width - 1) / 2; // if odd, left and right centres will be the same
+                int rightCentreX = startX + width / 2;
+                bool flipX = rng.Next(0, 2) == 1;
+                for (int x = startX; x <= endX; x++)
+                {
+                    for (int j = 0; j < height; j++)
+                    {
+                        int y = startY + j;
+                        int side;
+                        if (flipX)
+                            side = (j + 1) % 2;
+                        else
+                            side = j % 2;
+                        if (side == 1 && x >= leftCentreX)
+                            continue;
+                        else if (side == 0 && x <= rightCentreX)
+                            continue;
+                        wallsGrid[x, y] = true;
+                    }
+                }
+                int _topX = startX + width / 2;
+                if (width % 2 == 0) // even width
+                    _topX -= rng.Next(0, 2); // 50% chance to move to left centre tile rather than right
+                _topConnection = new GridNode(new Vector2Int(_topX, endY + 1));
+
+                int _botX = startX + width / 2;
+                if (width % 2 == 0) // even width
+                    _botX -= rng.Next(0, 2); // 50% chance to move to left centre tile rather than right
+                _botConnection = new GridNode(new Vector2Int(_botX, startY));
+            }
         }
 
 
         public void GenerateRoom(int startX, int startY, int endX, int endY, RNG rng, out GridNode topConnection, out GridNode botConnection)
         {
+            int width = endX - startX + 1;
+            int height = endY - startY + 1;
             botConnection = new GridNode(new Vector2Int(startX, startY));
             topConnection = new GridNode(new Vector2Int(endX, endY));
         }

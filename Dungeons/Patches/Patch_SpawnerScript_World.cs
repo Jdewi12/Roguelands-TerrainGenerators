@@ -219,8 +219,8 @@ namespace TerrainGenerators.Patches
             switch (SpawnerScript.curBiome)
             {
                 case 0: // Desolate Canyon
-                    //return new DesolateCanyon();
-                    return new Rooms(); // TODO: FIX THIS!!!!!
+                    return new DesolateCanyon();
+                    //return new Rooms(); // TODO: FIX THIS!!!!!
                 case 1: // Deep Jungle
                     return new MagiciteLike();
                 case 2: // Hollow Caverns
@@ -244,7 +244,7 @@ namespace TerrainGenerators.Patches
                 case 12: // Forbidden Arena
                     return new MagiciteLike();
                 case 13: // Cathedral
-                    return new MagiciteLike();
+                    return new Rooms();
                 default:
                     return new Caves();
             }

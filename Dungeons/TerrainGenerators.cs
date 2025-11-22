@@ -129,8 +129,8 @@ namespace TerrainGenerators
         public static Dictionary<int, Texture2D> TileInnerCorners = new Dictionary<int, Texture2D>();
         public static Dictionary<int, Texture2D> TileWalls = new Dictionary<int, Texture2D>();
 
-        const int tileSize = 64;
-        const int tileSize2 = 2 * tileSize;
+        const int subTileSize = 64;
+        const int fullTileSize = 2 * subTileSize;
         
         public static void LoadPackedTextures()
         {
@@ -216,7 +216,7 @@ namespace TerrainGenerators
                 Tuple<string, int> topLeft = GenerateTileQuarter(tileCombination[3], tileCombination[0], tileCombination[1]); // rotate this 90
                 foreach (int biomeID in Biomes)
                 {
-                    Texture2D tex = new Texture2D(tileSize2, tileSize2)
+                    Texture2D tex = new Texture2D(fullTileSize, fullTileSize)
                     {
                         filterMode = FilterMode.Point
                     };
@@ -225,14 +225,14 @@ namespace TerrainGenerators
                     Texture2D bottomLeftTex = GetTex(bottomLeft.Item1, biomeID, bottomLeft.Item2 + 2);
                     Texture2D topLeftTex = GetTex(topLeft.Item1, biomeID, topLeft.Item2 + 3);
                     // texture coordinates start in bottom left
-                    for (int x = 0; x < tileSize; x++)
+                    for (int x = 0; x < subTileSize; x++)
                     {
-                        for (int y = 0; y < tileSize; y++)
+                        for (int y = 0; y < subTileSize; y++)
                         {
-                            tex.SetPixel(tileSize2 - x - 1, tileSize2 - y - 1, bottomLeftTex.GetPixel(x, y));
-                            tex.SetPixel(tileSize - x - 1, tileSize2 - y - 1, bottomRightTex.GetPixel(x, y));
-                            tex.SetPixel(tileSize2 - x - 1, tileSize - y - 1, topLeftTex.GetPixel(x, y));
-                            tex.SetPixel(tileSize - x - 1, tileSize - y - 1, topRightTex.GetPixel(x, y));
+                            tex.SetPixel(fullTileSize - x - 1, fullTileSize - y - 1, bottomLeftTex.GetPixel(x, y));
+                            tex.SetPixel(subTileSize - x - 1, fullTileSize - y - 1, bottomRightTex.GetPixel(x, y));
+                            tex.SetPixel(fullTileSize - x - 1, subTileSize - y - 1, topLeftTex.GetPixel(x, y));
+                            tex.SetPixel(subTileSize - x - 1, subTileSize - y - 1, topRightTex.GetPixel(x, y));
                         }
                     }
                     tex.Apply();
@@ -301,47 +301,46 @@ namespace TerrainGenerators
             else
             {
                 Log("Texture not found: Tile" + str + biome);
-                tex = new Texture2D(tileSize, tileSize);
+                tex = new Texture2D(subTileSize, subTileSize);
             }
             if (rotation == 1)
             {
-                Texture2D newTex = new Texture2D(tileSize, tileSize);
-                for (int i = 0; i < tileSize; i++)
+                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
+                for (int i = 0; i < subTileSize; i++)
                 {
-                    for (int j = 0; j < tileSize; j++)
+                    for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(j, tileSize - i - 1, tex.GetPixel(i, j));
+                        newTex.SetPixel(j, subTileSize - i - 1, tex.GetPixel(i, j));
                     }
                 }
                 tex = newTex;
             }
             else if (rotation == 2)
             {
-                Texture2D newTex = new Texture2D(tileSize, tileSize);
-                for (int i = 0; i < tileSize; i++)
+                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
+                for (int i = 0; i < subTileSize; i++)
                 {
-                    for (int j = 0; j < tileSize; j++)
+                    for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(tileSize - i - 1, tileSize - j - 1, tex.GetPixel(i, j));
+                        newTex.SetPixel(subTileSize - i - 1, subTileSize - j - 1, tex.GetPixel(i, j));
                     }
                 }
                 tex = newTex;
             }
             else if (rotation == 3)
             {
-                Texture2D newTex = new Texture2D(tileSize, tileSize);
-                for (int i = 0; i < tileSize; i++)
+                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
+                for (int i = 0; i < subTileSize; i++)
                 {
-                    for (int j = 0; j < tileSize; j++)
+                    for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(tileSize - j - 1, i, tex.GetPixel(i, j));
+                        newTex.SetPixel(subTileSize - j - 1, i, tex.GetPixel(i, j));
                     }
                 }
                 tex = newTex;
             }
             return tex;
         }
-
 
         public static Tuple<string, int> GenerateTileQuarter(bool up, bool upRight, bool right) //returns tile name and rotation (0-1)
         {
