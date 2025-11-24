@@ -17,7 +17,7 @@ namespace TerrainGenerators.Patches
     [HarmonyGadget("TerrainGenerators")]
     public static class Patch_SpawnerScript_World
     {
-        public static int BlockSize = 16;
+        public static int BlockSize = 8;
         public static int GridWidth = 32;
         public static int GridHeight = 24;
         public static int SpawnX { get; private set; } // grid position

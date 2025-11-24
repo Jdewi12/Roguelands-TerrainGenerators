@@ -19,12 +19,12 @@ namespace TerrainGenerators.Generators
         public override void GenerateWalls(RNG rng)
         {
             // max internal width/height of rooms
-            const int maxRoomWidth = 5;
+            const int maxRoomWidth = 6;
             const int maxRoomHeight = 6;
             const int numRoomsHorizontal = 3;
-            const int numRoomsVertical = 2;
+            const int numRoomsVertical = 3;
             const int horizontalPadding = 1;
-            const int verticalPadding = 1;
+            const int verticalPadding = 2;
             const int worldWidth = numRoomsHorizontal * (maxRoomWidth + horizontalPadding);
             const int worldHeight = numRoomsVertical * (maxRoomHeight + verticalPadding);
 

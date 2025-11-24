@@ -13,13 +13,13 @@ namespace TerrainGenerators.Generators
     {
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
-        private int mazeCols = 5;
-        private int colWidth = 7;
+        private int mazeCols = 6;
+        private int colWidth = 8;
         private int minVerticalTunnelThickness = 3;
         private int mazeRows = 3;
-        private int rowHeight = 3;//4;
+        private int rowHeight = 4;//3;
         private int minHorizontalTunnelThickness = 1;
-        private int outerPadding = 3;
+        private int outerPadding = 5;
         public override int GridWidth => mazeCols * colWidth; // 35
         public override int GridHeight => mazeRows * rowHeight; // 9//12
         public override int MinimapViewportWidth => Mathf.Clamp(Mathf.RoundToInt(MinimapViewportHeight * 1.5f), 0, GridWidth + outerPadding);
@@ -117,11 +117,12 @@ namespace TerrainGenerators.Generators
                     if (wallsGrid.IsWall(x - 1, y) || wallsGrid.IsWall(x, y) || wallsGrid.IsWall(x + 1, y))
                     {
                         const int minTreeHeight = 3;
+                        const int maxTreeHeight = 6;
                         int bottomToTop = y - lastGround - 1;
                         // we need at least aircount=3 space below this wall for the top of the tree so the player can go around it
                         if (airCount >= 3 && bottomToTop >= minTreeHeight + 1)
                         {
-                            int maxHeight = bottomToTop - 1; // leave space on top
+                            int maxHeight = Mathf.Min(maxTreeHeight, bottomToTop - 1); // leave space on top
                             int minHeight = Mathf.Max(bottomToTop - airCount + 2, minTreeHeight); // plus 2 so players can get around from below
                             SpawnTree(x, lastGround + 1, rng.Next(minHeight, maxHeight + 1), wallsGrid, rng);
                         }

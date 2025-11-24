@@ -14,7 +14,7 @@ namespace TerrainGenerators.Generators
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
         //public override Color MinimapWallsColor => new Color(0f, 1f, 0f);
-        public override int GridWidth => 28;
+        public override int GridWidth => 32;
         public override int GridHeight => 24;
         public override bool[,] WallsGrid => wallsGrid;
         private bool[,] wallsGrid;

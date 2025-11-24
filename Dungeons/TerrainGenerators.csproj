@@ -30,6 +30,9 @@
     <DebugType>full</DebugType>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Generators\Caves - Copy.cs.DISABLED" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\0Harmony.dll</HintPath>
       <Private>false</Private>
@@ -79,7 +82,7 @@
 		<Output TaskParameter="Assemblies" ItemName="AssemblyInfo" />
 	</GetAssemblyIdentity>
 	<PropertyGroup>
-		<VersionInfo>$([System.Text.RegularExpressions.Regex]::Replace(&quot;%(AssemblyInfo.Version)&quot;, &quot;^(.+?)(\.0+)+$&quot;, &quot;$1&quot;))</VersionInfo>
+		<VersionInfo>$([System.Text.RegularExpressions.Regex]::Replace("%(AssemblyInfo.Version)", "^(.+?)(\.0+)+$", "$1"))</VersionInfo>
 	</PropertyGroup>
 	<!-- note: This doesn't delete previous versions when VersionInfo changes! -->
     <Delete Files="$(GamePath)GadgetCore\Mods\$(AssemblyName)_v$(VersionInfo).zip" />

@@ -129,7 +129,12 @@ namespace TerrainGenerators
         public static Dictionary<int, Texture2D> TileInnerCorners = new Dictionary<int, Texture2D>();
         public static Dictionary<int, Texture2D> TileWalls = new Dictionary<int, Texture2D>();
 
-        const int subTileSize = 64;
+        const string corner = "Corner";
+        const string flat = "Flat";
+        const string innerCorner = "InnerCorner";
+        const string wall = "Wall";
+
+        const int subTileSize = 32;
         const int fullTileSize = 2 * subTileSize;
         
         public static void LoadPackedTextures()
@@ -195,9 +200,10 @@ namespace TerrainGenerators
 
         public static void GenerateTextures()
         {
-            //  Tile 0   Tile 1   Tile 2
-            //  Tile 3     ME     Tile 4
-            //  Tile 5   Tile 6   Tile 7
+            // Relative tile positions:
+            // Tile 0   Tile 1   Tile 2
+            // Tile 3     ME     Tile 4
+            // Tile 5   Tile 6   Tile 7
 
             // topRight = (tile1, tile2, tile4)
             // bottomRight = (tile4, tile7, tile6).rotate(270)
@@ -210,29 +216,32 @@ namespace TerrainGenerators
             {
                 tileCombination = ConvertToBoolArray(i);
 
-                Tuple<string, int> topRight = GenerateTileQuarter(tileCombination[1], tileCombination[2], tileCombination[4]);
-                Tuple<string, int> bottomRight = GenerateTileQuarter(tileCombination[4], tileCombination[7], tileCombination[6]); // rotate this 270
-                Tuple<string, int> bottomLeft = GenerateTileQuarter(tileCombination[6], tileCombination[5], tileCombination[3]); // rotate this 180
-                Tuple<string, int> topLeft = GenerateTileQuarter(tileCombination[3], tileCombination[0], tileCombination[1]); // rotate this 90
+                // Corner, Flat, InnerCorner, or Wall
+                Tuple<string, int> topRightNameAndRot = DetermineSubtileType(tileCombination[1], tileCombination[2], tileCombination[4]);
+                Tuple<string, int> bottomRightNameAndRot = DetermineSubtileType(tileCombination[4], tileCombination[7], tileCombination[6]);
+                Tuple<string, int> bottomLeftNameAndRot = DetermineSubtileType(tileCombination[6], tileCombination[5], tileCombination[3]);
+                Tuple<string, int> topLeftNameAndRot = DetermineSubtileType(tileCombination[3], tileCombination[0], tileCombination[1]);
                 foreach (int biomeID in Biomes)
                 {
                     Texture2D tex = new Texture2D(fullTileSize, fullTileSize)
                     {
                         filterMode = FilterMode.Point
                     };
-                    Texture2D topRightTex = GetTex(topRight.Item1, biomeID, topRight.Item2);
-                    Texture2D bottomRightTex = GetTex(bottomRight.Item1, biomeID, bottomRight.Item2 + 1); //only rotations of 1, 2, and 3 do anything, so if the texture already rotates then this'll do nothing.
-                    Texture2D bottomLeftTex = GetTex(bottomLeft.Item1, biomeID, bottomLeft.Item2 + 2);
-                    Texture2D topLeftTex = GetTex(topLeft.Item1, biomeID, topLeft.Item2 + 3);
+
+                    Texture2D topRightTex = GetRotatedSourceTex(biomeID, 1, topRightNameAndRot, topLeftNameAndRot, bottomRightNameAndRot, bottomLeftNameAndRot);
+                    Texture2D bottomRightTex = GetRotatedSourceTex(biomeID, 2, bottomRightNameAndRot, topRightNameAndRot, bottomLeftNameAndRot, topLeftNameAndRot);
+                    Texture2D bottomLeftTex = GetRotatedSourceTex(biomeID, 3, bottomLeftNameAndRot, bottomRightNameAndRot, topLeftNameAndRot, topRightNameAndRot);
+                    Texture2D topLeftTex = GetRotatedSourceTex(biomeID, 0, topLeftNameAndRot, bottomLeftNameAndRot, topRightNameAndRot, bottomRightNameAndRot);
                     // texture coordinates start in bottom left
                     for (int x = 0; x < subTileSize; x++)
                     {
                         for (int y = 0; y < subTileSize; y++)
                         {
-                            tex.SetPixel(fullTileSize - x - 1, fullTileSize - y - 1, bottomLeftTex.GetPixel(x, y));
-                            tex.SetPixel(subTileSize - x - 1, fullTileSize - y - 1, bottomRightTex.GetPixel(x, y));
-                            tex.SetPixel(fullTileSize - x - 1, subTileSize - y - 1, topLeftTex.GetPixel(x, y));
-                            tex.SetPixel(subTileSize - x - 1, subTileSize - y - 1, topRightTex.GetPixel(x, y));
+                            // why do is everything inverted??? :(
+                            tex.SetPixel(fullTileSize - 1 - x, fullTileSize - 1 - y, bottomLeftTex.GetPixel(x, y));
+                            tex.SetPixel(subTileSize -1 - x, fullTileSize - 1 - y, bottomRightTex.GetPixel(x, y));
+                            tex.SetPixel(fullTileSize - 1 - x, subTileSize - 1 - y, topLeftTex.GetPixel(x, y));
+                            tex.SetPixel(subTileSize - 1 - x, subTileSize - 1 - y, topRightTex.GetPixel(x, y)); 
                         }
                     }
                     tex.Apply();
@@ -287,22 +296,81 @@ namespace TerrainGenerators
             return tex; 
         }
 
-        public static Texture2D GetTex(string str, int biome, int rotation)
+
+        /// <param name="subTilePos">Basically rotation; 0=topLeft, 1=topRight, 2=botRight, 3=botLeft</param>
+        public static Texture2D GetRotatedSourceTex(int biome, int subtilePos, Tuple<string, int> tileType, Tuple<string, int> relLeftType, Tuple<string, int> relRightType, Tuple<string, int> oppType)
         {
-            Texture2D tex;
-            if (str == "Corner")
-                tex = TileCorners[biome];
-            else if (str == "Flat")
-                tex = TileFlats[biome];
-            else if (str == "InnerCorner")
-                tex = TileInnerCorners[biome];
-            else if (str == "Wall")
-                tex = TileWalls[biome];
+            string type = tileType.Item1;
+            int rotation = tileType.Item2 + subtilePos - 1;
+            Texture2D sourceTex;
+            int sourceSubPos = 0;
+            if (type == corner)
+            {
+                sourceTex = TileCorners[biome];
+                sourceSubPos = 1; // top right
+            }
+            else if (type == flat)
+            {
+                sourceTex = TileFlats[biome];
+                sourceSubPos = (subtilePos + rotation) % 2; // top left or top right of flat
+            }
+            else if (type == innerCorner)
+            {
+                sourceTex = TileInnerCorners[biome];
+                sourceSubPos = 1; // top right
+            }
+            else if (type == wall) // we are wall
+            {
+                if(relLeftType.Item1 == wall) // left is wall
+                {
+                    if(relRightType.Item1 == wall) // right is also wall
+                    {
+                        if (oppType.Item1 == wall) // this whole tile is wall
+                        {
+                            rotation = 2; // ??????
+                            sourceTex = TileWalls[biome];
+                            sourceSubPos = (subtilePos + 2) % 4; // ????
+                        }
+                        else // surface opposite
+                        {
+                            rotation += 2; // rotate to match opposite corner
+                            sourceTex = TileInnerCorners[biome];
+                            sourceSubPos = 3; // the inside corner of the inner corner tex
+                        }
+                    }
+                    else // wall on left but surface on right
+                    {
+                        rotation += 2; // Why 2?? // rotate to match right surface
+                        sourceTex = TileFlats[biome];
+                        sourceSubPos = 3;
+                    }    
+                }
+                else // surface on left
+                {
+                    if(relRightType.Item1 == wall) // wall on right
+                    {
+                        rotation -= 1; // rotate to match left surface
+                        sourceTex = TileFlats[biome];
+                        sourceSubPos = 2;
+                    }
+                    else // surface on right
+                    {
+                        rotation += 2; // rotate to match opposite corner
+                        sourceTex = TileCorners[biome];
+                        sourceSubPos = 3;
+                    }
+                }
+            }
             else
             {
-                Log("Texture not found: Tile" + str + biome);
-                tex = new Texture2D(subTileSize, subTileSize);
+                Log("Texture not found: Tile" + type + biome);
+                sourceTex = new Texture2D(subTileSize, subTileSize);
             }
+            rotation = ((rotation % 4) + 4) % 4; // clamp rotation to 0-3
+
+            int xOffSet = sourceSubPos == 0 || sourceSubPos == 3 ? 0 : subTileSize;
+            int yOffSet = sourceSubPos == 2 || sourceSubPos == 3 ? 0 : subTileSize;
+            // rotate the subsection of the texture
             if (rotation == 1)
             {
                 Texture2D newTex = new Texture2D(subTileSize, subTileSize);
@@ -310,10 +378,10 @@ namespace TerrainGenerators
                 {
                     for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(j, subTileSize - i - 1, tex.GetPixel(i, j));
+                        newTex.SetPixel(j, subTileSize - i - 1, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
                     }
                 }
-                tex = newTex;
+                sourceTex = newTex;
             }
             else if (rotation == 2)
             {
@@ -322,10 +390,10 @@ namespace TerrainGenerators
                 {
                     for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(subTileSize - i - 1, subTileSize - j - 1, tex.GetPixel(i, j));
+                        newTex.SetPixel(subTileSize - i - 1, subTileSize - j - 1, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
                     }
                 }
-                tex = newTex;
+                sourceTex = newTex;
             }
             else if (rotation == 3)
             {
@@ -334,32 +402,101 @@ namespace TerrainGenerators
                 {
                     for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(subTileSize - j - 1, i, tex.GetPixel(i, j));
+                        newTex.SetPixel(subTileSize - j - 1, i, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
                     }
                 }
-                tex = newTex;
+                sourceTex = newTex;
             }
-            return tex;
+            else // else: 0 (no rotation)
+            {
+                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
+                for (int i = 0; i < subTileSize; i++)
+                {
+                    for (int j = 0; j < subTileSize; j++)
+                    {
+                        newTex.SetPixel(i, j, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
+                    }
+                }
+                sourceTex = newTex;
+            }
+                
+            return sourceTex;
         }
 
-        public static Tuple<string, int> GenerateTileQuarter(bool up, bool upRight, bool right) //returns tile name and rotation (0-1)
+
+        /*
+        /// <param name="subtilePos">Basically rotation; 0=topLeft, 1=topRight, 2=botRight, 3=botLeft</param>
+        /// <returns>(string) Tile name and (int) relative rotation (0 or 1)</returns>
+        public static Tuple<string, int> GenerateTileQuarter2(bool[] neighbours, int subtilePos)
+        {
+            int[] singleRotationIndices = new int[8] { 2, 4, 7, 6, 5, 3, 0, 1 };
+            void RotateNeighbours(int rotations)
+            {
+                // rotate the neighbours array subTilePos times
+                for (int i = 0; i < rotations; i++)
+                {
+                    bool[] newNeighbours = new bool[8];
+                    for (int j = 0; j < 8; j++)
+                    {
+                        newNeighbours[j] = neighbours[singleRotationIndices[j]];
+                    }
+                    neighbours = newNeighbours;
+                }
+            }
+            RotateNeighbours(subtilePos);
+            // *Most* subtiles now only need index 1, 2, and 4 (up, upRight, right) to determine their texture
+            // Relative tile positions:
+            // Tile 0   Tile 1   Tile 2
+            //
+            //          ??  ME
+            // Tile 3            Tile 4
+            //          ??  ??
+            //
+            // Tile 5   Tile 6   Tile 7
+            bool up = neighbours[1];
+            bool upRight = neighbours[2];
+            bool right = neighbours[2];
+
+
+            if (!up && !upRight && !right)
+                return ToTuple("Corner", 0); // simple
+            else if (!up && !upRight && right)
+                return ToTuple("Flat", 0); // todo: pick depending on subtilePos?
+            else if (!up && upRight && !right)
+                return ToTuple("Corner", 0); // simple. Could be simplified. Note: this could be changed to a custom tile for a diagonal connection instead
+            else if (!up && upRight && right)
+                return ToTuple("Flat", 0); // todo: pick depending on subtilePos? Could be simplified to !up && right?
+            else if (up && !upRight && !right)
+                return ToTuple("Flat", 1); // todo: pick depending on subtilePos?
+            else if (up && !upRight && right)
+                return ToTuple("InnerCorner", 0); // simple
+            else if (up && upRight && !right)
+                return ToTuple("Flat", 1); // todo: pick depending on subtilePos? Could be simplified to up && !right?
+            else // if (up && upRight && right)
+            {
+                // Inside subtile; these are more complicated because they depend on the whole tile shape.
+            }
+        }*/
+
+        /// <returns>(string) Tile name and (int) relative rotation (0 or 1)</returns>
+        public static Tuple<string, int> DetermineSubtileType(bool up, bool upRight, bool right) 
         {
             if (!up && !upRight && !right)
-                return ToTuple("Corner",0);
+                return ToTuple(corner,0);
             else if (!up && !upRight && right)
-                return ToTuple("Flat", 0);
+                return ToTuple(flat, 0);
             else if (!up && upRight && !right)
-                return ToTuple("Corner", 0);
+                return ToTuple(corner, 0);
             else if (!up && upRight && right)
-                return ToTuple("Flat", 0);
+                return ToTuple(flat, 0);
             else if (up && !upRight && !right)
-                return ToTuple("Flat",1);
+                return ToTuple(flat, 1);
             else if (up && !upRight && right)
-                return ToTuple("InnerCorner", 0);
+                return ToTuple(innerCorner, 0);
             else if (up && upRight && !right)
-                return ToTuple("Flat", 1);
+                return ToTuple(flat, 1);
             else// if (up && upRight && right)
-                return ToTuple("Wall", 0);
+                return ToTuple(wall, 0);
         }
 
         static Tuple<string, int> ToTuple(string string1, int int1)
@@ -367,15 +504,17 @@ namespace TerrainGenerators
             return new Tuple<string, int>(string1, int1);
         }
 
+        /// <summary>
+        /// Converts an int (0-255) to 8 bools.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
         public static bool[] ConvertToBoolArray(int input)
         {
             string binaryString = Convert.ToString(input, 2).PadLeft(8,'0');
-            //TerrainGenerators.Log("Combination: " + binaryString);
-            //TerrainGenerators.Log("Binary String: " + binaryString);
             bool[] m = new bool[8];
             for (int i = 0; i < 8; i++)
             {
-                //TerrainGenerators.Log("I: " + i);
                 m[i] = (binaryString[binaryString.Length - i - 1] == '1');
             }
             return m;
