@@ -191,8 +191,8 @@ namespace TerrainGenerators.Generators
             }
             TerrainGenerators.Log(s);
 
-            CreateWalls(wallsGrid);
             CreateMinimapIfPresent(wallsGrid);
+            CreateWalls(wallsGrid);
         }
 
         public void GenerateStaircase(int startX, int startY, int endX, int endY, RNG rng, out GridNode topConnection, out GridNode botConnection)

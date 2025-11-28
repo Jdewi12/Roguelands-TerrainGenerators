@@ -126,10 +126,8 @@ namespace TerrainGenerators.Generators
 
 
             //GenerateFloatingIslands(rng);
-
-            CreateWalls(wallsGrid);
-
             CreateMinimapIfPresent(wallsGrid);
+            CreateWalls(wallsGrid);
         }
 
         private void GenerateFloatingIslands(RNG rng)

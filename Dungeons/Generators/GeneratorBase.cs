@@ -368,6 +368,7 @@ namespace TerrainGenerators.Generators
                     FloodDistance(neighbour, nextDistance);
                 }
             }
+            /*
             string s = "";
             for (int j = height - 1; j >= 0 ; j--)
             {
@@ -385,6 +386,7 @@ namespace TerrainGenerators.Generators
                 }
             }
             TerrainGenerators.Log(s);
+            */
 
             groundSpawnSpots = groundSpawnSpots.OrderByDescending(
                 vec => distancesFromSpawn.TryGetValue(vec + Vector2Int.up, out float dist) ? dist : Vector2.Distance(vec + Vector2Int.up, PlayerSpawn)
@@ -417,7 +419,7 @@ namespace TerrainGenerators.Generators
                     i = groundSpawnSpots.Count - 1;
                 Vector2Int spawnSpot = groundSpawnSpots[i];
                 groundSpawnSpots.RemoveAt(i);
-                TerrainGenerators.Log($"({spawnSpot.x},{spawnSpot.y}) {(distancesFromSpawn.TryGetValue(spawnSpot + Vector2Int.up, out float dist) ? dist.ToString() : "?")}");
+                //TerrainGenerators.Log($"({spawnSpot.x},{spawnSpot.y}) {(distancesFromSpawn.TryGetValue(spawnSpot + Vector2Int.up, out float dist) ? dist.ToString() : "?")}");
                 if (TeleporterPositions.Count < 3)
                 {
                     SpawnTeleporter(spawnSpot.x, spawnSpot.y, TeleporterPositions.Count);

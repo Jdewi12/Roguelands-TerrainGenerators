@@ -40,13 +40,13 @@ namespace TerrainGenerators.Generators
             Vector2Int mazeChunkSize = new Vector2Int(colWidth, rowHeight);
             Vector2Int halfMazeChunkSize = mazeChunkSize / 2; // integerDivision
 
-            string s = "";
+            //string s = "";
             for (int j = 0; j < mazeRows; j++)
             {
-                s += "\r\n";
+                //s += "\r\n";
                 for (int i = 0; i < mazeCols; i++)
                 {
-                    s += maze[i, mazeRows - j - 1].IsWall ? "#" : ".";
+                    //s += maze[i, mazeRows - j - 1].IsWall ? "#" : ".";
                     var node = maze[i, j];
                     Vector2Int wallPos = node.MazePosition * mazeChunkSize + halfMazeChunkSize;
                     foreach (var parent in node.Connections)
@@ -109,7 +109,7 @@ namespace TerrainGenerators.Generators
                     wallsGrid[wallPos.x, wallPos.y] = node.IsWall;
                 }
             }
-            TerrainGenerators.Log(s);
+            //TerrainGenerators.Log(s);
             // set player spawn to the lowest left-most air tile
             bool done = false;
             for (int x = 0; x < GridWidth && !done; x++)
@@ -123,7 +123,7 @@ namespace TerrainGenerators.Generators
             CreateWalls(wallsGrid, outerPadding);
             if(SpawnerScript.curBiome == 1 || SpawnerScript.curBiome == 10) // jungle or whisperwood
                 SpawnTrees(ref wallsGrid, rng);
-
+            // Minimap needs to be done after SpawnTrees
             CreateMinimapIfPresent(wallsGrid, outerPadding);
         }
 

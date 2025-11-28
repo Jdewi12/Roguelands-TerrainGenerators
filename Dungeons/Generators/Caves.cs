@@ -124,8 +124,9 @@ namespace TerrainGenerators.Generators
                     }
                 }
             }
-            CreateWalls(wallsGrid);
             CreateMinimapIfPresent(wallsGrid);
+            CreateWalls(wallsGrid);
+            
         }
 
         public override void PopulateLevel(RNG rng)

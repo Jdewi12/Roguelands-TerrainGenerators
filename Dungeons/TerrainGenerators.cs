@@ -35,6 +35,7 @@ namespace TerrainGenerators
         internal static MinimapAPI MinimapAPI;
         internal static GadgetLogger InternalLogger;
         internal static GadgetConfig InternalConfig;
+        public static bool TexturesReady = false;
 
         protected override void LoadConfig()
         {
@@ -105,6 +106,7 @@ namespace TerrainGenerators
             LoadPackedTextures();
 
             var dummy = new GameObject("Jdewi Dummy");
+            GameObject.DontDestroyOnLoad(dummy); // so the coroutine keeps running if the player goes from menu to game scene before done
             var dummyMB = dummy.AddComponent<DummyMonoBehaviour>();
             dummyMB.StartCoroutine(DelayedPlanetHandling(destroyWhenDone: dummy));
 
@@ -126,12 +128,8 @@ namespace TerrainGenerators
             {
                 ModdedTextures.LoadModdedTextures();
                 sw.Stop();
-                Log("Loaded modded textures in " + sw.ElapsedMilliseconds + "ms");
-                sw.Reset();
-                sw.Start();
-                GenerateTextures();
-                sw.Stop();
-                Log("Generated all chunk textures in " + sw.ElapsedMilliseconds + "ms");
+                Log("Loaded modded textures in " + sw.ElapsedMilliseconds + "ms on main thread");
+                yield return GenerateTextures();
             }
 
 
@@ -221,7 +219,7 @@ namespace TerrainGenerators
         
         public static void LoadPackedTextures()
         {
-            Log("Generating Textures.");
+            Log("Loading Textures.");
             string filesPath = Path.Combine(GadgetPaths.AssetsPath, "TerrainGenerators");
             string TerrainGeneratorsDll = Path.Combine(GadgetPaths.ModsPath, "TerrainGenerators.dll");
             string manifestIni = Path.Combine(GadgetPaths.ModsPath, "Manifest.ini");
@@ -269,10 +267,11 @@ namespace TerrainGenerators
             foreach (string imagePath in Directory.GetFiles(filesPath, "*.png"))
             {
                 string fileName = Path.GetFileName(imagePath);
-                if (!CheckImageFileName(fileName, "TileCorner", ref TileCorners))
-                    if (!CheckImageFileName(fileName, "TileFlat", ref TileFlats))
-                        if (!CheckImageFileName(fileName, "TileInnerCorner", ref TileInnerCorners))
-                            if (!CheckImageFileName(fileName, "TileWall", ref TileWalls))
+                // TryGetTexture loads the texture and adds it to the passed dictionary if its name starts with the check name
+                if (!TryGetTexture(fileName, "TileCorner", ref TileCorners))
+                    if (!TryGetTexture(fileName, "TileFlat", ref TileFlats))
+                        if (!TryGetTexture(fileName, "TileInnerCorner", ref TileInnerCorners))
+                            if (!TryGetTexture(fileName, "TileWall", ref TileWalls))
                             {
                                 OtherTextures.Add(fileName, LoadTexture(fileName));
                                 Log("Loaded non-tile texture: " + fileName);
@@ -280,53 +279,19 @@ namespace TerrainGenerators
             }
         }
 
-        public static void GenerateTextures()
+        public static IEnumerator GenerateTextures()
         {
-            // Relative tile positions:
-            // Tile 0   Tile 1   Tile 2
-            // Tile 3     ME     Tile 4
-            // Tile 5   Tile 6   Tile 7
-
-            // topRight = (tile1, tile2, tile4)
-            // bottomRight = (tile4, tile7, tile6).rotate(270)
-            // bottomLeft = (tile6, tile5, tile3).rotate(180)
-            // topLeft = (tile3, tile0, tile1).rotate(90)
-
-            Log("Generating Textures...");
-            bool[] tileCombination;
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            // Textures need to be created on the main thread.
             for (int i = 0; i < 256; i++)
             {
-                tileCombination = ConvertToBoolArray(i);
-
-                // Corner, Flat, InnerCorner, or Wall
-                Tuple<string, int> topRightNameAndRot = DetermineSubtileType(tileCombination[1], tileCombination[2], tileCombination[4]);
-                Tuple<string, int> bottomRightNameAndRot = DetermineSubtileType(tileCombination[4], tileCombination[7], tileCombination[6]);
-                Tuple<string, int> bottomLeftNameAndRot = DetermineSubtileType(tileCombination[6], tileCombination[5], tileCombination[3]);
-                Tuple<string, int> topLeftNameAndRot = DetermineSubtileType(tileCombination[3], tileCombination[0], tileCombination[1]);
                 foreach (int biomeID in Biomes)
                 {
                     Texture2D tex = new Texture2D(fullTileSize, fullTileSize)
                     {
                         filterMode = FilterMode.Point
                     };
-
-                    Texture2D topRightTex = GetRotatedSourceTex(biomeID, 1, topRightNameAndRot, topLeftNameAndRot, bottomRightNameAndRot, bottomLeftNameAndRot);
-                    Texture2D bottomRightTex = GetRotatedSourceTex(biomeID, 2, bottomRightNameAndRot, topRightNameAndRot, bottomLeftNameAndRot, topLeftNameAndRot);
-                    Texture2D bottomLeftTex = GetRotatedSourceTex(biomeID, 3, bottomLeftNameAndRot, bottomRightNameAndRot, topLeftNameAndRot, topRightNameAndRot);
-                    Texture2D topLeftTex = GetRotatedSourceTex(biomeID, 0, topLeftNameAndRot, bottomLeftNameAndRot, topRightNameAndRot, bottomRightNameAndRot);
-                    // texture coordinates start in bottom left
-                    for (int x = 0; x < subTileSize; x++)
-                    {
-                        for (int y = 0; y < subTileSize; y++)
-                        {
-                            // why is everything inverted??? :(
-                            tex.SetPixel(fullTileSize - 1 - x, fullTileSize - 1 - y, bottomLeftTex.GetPixel(x, y));
-                            tex.SetPixel(subTileSize -1 - x, fullTileSize - 1 - y, bottomRightTex.GetPixel(x, y));
-                            tex.SetPixel(fullTileSize - 1 - x, subTileSize - 1 - y, topLeftTex.GetPixel(x, y));
-                            tex.SetPixel(subTileSize - 1 - x, subTileSize - 1 - y, topRightTex.GetPixel(x, y)); 
-                        }
-                    }
-                    tex.Apply();
                     if (GeneratedTextures.TryGetValue(biomeID, out Dictionary<byte, Texture2D> dict2))
                     {
                         GeneratedTextures[biomeID].Add((byte)i, tex);
@@ -338,10 +303,99 @@ namespace TerrainGenerators
                     }
                 }
             }
-            Log("Generated textures for " + Biomes.Count + " planet(s).");
+            Texture2D[] reusableSubTextures = new Texture2D[4];
+            for (int i = 0; i < 4; i++)
+                reusableSubTextures[i] = new Texture2D(subTileSize, subTileSize);
+
+            var thread = new Thread(AsyncGeneration) { IsBackground = true };
+            thread.Start();
+            sw.Stop();
+            bool errored = false;
+            Log("Preparing blank textures took " + sw.ElapsedMilliseconds + "ms on main thread");
+            // wait for texture generation to finish
+            while (thread.IsAlive)
+                yield return null;
+            if (errored)
+            {
+                InternalLogger.LogWarning("Async errored; trying non-async");
+                AsyncGeneration(); // run on main thread
+            }
+
+            sw.Reset();
+            sw.Start();
+            // Textures need to applied on the main thread.
+            foreach(var dict in GeneratedTextures.Values) // each biome's texture dict
+            {
+                foreach(var texture in dict.Values)
+                {
+                    texture.Apply();
+                }
+            }
+
+            TexturesReady = true;
+            sw.Stop();
+            Log("Applying generated textures took " + sw.ElapsedMilliseconds + "ms on main thread");
+
+            void AsyncGeneration()
+            {
+                try
+                {
+                    Stopwatch sw2 = new Stopwatch();
+                    sw2.Start();
+                    // Relative tile positions:
+                    // Tile 0   Tile 1   Tile 2
+                    // Tile 3     ME     Tile 4
+                    // Tile 5   Tile 6   Tile 7
+
+                    // topRight = (tile1, tile2, tile4)
+                    // bottomRight = (tile4, tile7, tile6).rotate(270)
+                    // bottomLeft = (tile6, tile5, tile3).rotate(180)
+                    // topLeft = (tile3, tile0, tile1).rotate(90)
+                    Log("Generating Textures...");
+                    bool[] tileCombination;
+                    for (int i = 0; i < 256; i++)
+                    {
+                        tileCombination = ConvertToBoolArray(i);
+
+                        // Corner, Flat, InnerCorner, or Wall
+                        Tuple<string, int> topRightNameAndRot = DetermineSubtileType(tileCombination[1], tileCombination[2], tileCombination[4]);
+                        Tuple<string, int> bottomRightNameAndRot = DetermineSubtileType(tileCombination[4], tileCombination[7], tileCombination[6]);
+                        Tuple<string, int> bottomLeftNameAndRot = DetermineSubtileType(tileCombination[6], tileCombination[5], tileCombination[3]);
+                        Tuple<string, int> topLeftNameAndRot = DetermineSubtileType(tileCombination[3], tileCombination[0], tileCombination[1]);
+                        foreach (int biomeID in Biomes)
+                        {
+                            Texture2D tex = GeneratedTextures[biomeID][(byte)i];
+                            Texture2D topRightTex = GetRotatedSourceTex(biomeID, 1, topRightNameAndRot, topLeftNameAndRot, bottomRightNameAndRot, bottomLeftNameAndRot, ref reusableSubTextures[0]);
+                            Texture2D bottomRightTex = GetRotatedSourceTex(biomeID, 2, bottomRightNameAndRot, topRightNameAndRot, bottomLeftNameAndRot, topLeftNameAndRot, ref reusableSubTextures[1]);
+                            Texture2D bottomLeftTex = GetRotatedSourceTex(biomeID, 3, bottomLeftNameAndRot, bottomRightNameAndRot, topLeftNameAndRot, topRightNameAndRot, ref reusableSubTextures[2]);
+                            Texture2D topLeftTex = GetRotatedSourceTex(biomeID, 0, topLeftNameAndRot, bottomLeftNameAndRot, topRightNameAndRot, bottomRightNameAndRot, ref reusableSubTextures[3]);
+                            // texture coordinates start in bottom left
+                            for (int x = 0; x < subTileSize; x++)
+                            {
+                                for (int y = 0; y < subTileSize; y++)
+                                {
+                                    // why is everything inverted??? :(
+                                    tex.SetPixel(fullTileSize - 1 - x, fullTileSize - 1 - y, bottomLeftTex.GetPixel(x, y));
+                                    tex.SetPixel(subTileSize - 1 - x, fullTileSize - 1 - y, bottomRightTex.GetPixel(x, y));
+                                    tex.SetPixel(fullTileSize - 1 - x, subTileSize - 1 - y, topLeftTex.GetPixel(x, y));
+                                    tex.SetPixel(subTileSize - 1 - x, subTileSize - 1 - y, topRightTex.GetPixel(x, y));
+                                }
+                            }
+                            GeneratedTextures[biomeID][(byte)i] = tex;
+                        }
+                    }
+                    sw2.Stop();
+                    Log("Generated textures for " + Biomes.Count + " planet(s) in " + sw2.ElapsedMilliseconds + "ms on background thread.");
+                }
+                catch(Exception e)
+                {
+                    errored = true;
+                    InternalLogger.LogError(e.ToString());
+                }
+            }
         }
 
-        static bool CheckImageFileName(string fileName, string checkName, ref Dictionary<int, Texture2D> textureDictionary)
+        static bool TryGetTexture(string fileName, string checkName, ref Dictionary<int, Texture2D> textureDictionary)
         {
             if (fileName.StartsWith(checkName))
             {
@@ -379,8 +433,9 @@ namespace TerrainGenerators
         }
 
 
+        // todo: reusableTexture probably doesn't need to be ref?
         /// <param name="subTilePos">Basically rotation; 0=topLeft, 1=topRight, 2=botRight, 3=botLeft</param>
-        public static Texture2D GetRotatedSourceTex(int biome, int subtilePos, Tuple<string, int> tileType, Tuple<string, int> relLeftType, Tuple<string, int> relRightType, Tuple<string, int> oppType)
+        public static Texture2D GetRotatedSourceTex(int biome, int subtilePos, Tuple<string, int> tileType, Tuple<string, int> relLeftType, Tuple<string, int> relRightType, Tuple<string, int> oppType, ref Texture2D reusableTexture)
         {
             string type = tileType.Item1;
             int rotation = tileType.Item2 + subtilePos - 1;
@@ -446,7 +501,7 @@ namespace TerrainGenerators
             else
             {
                 Log("Texture not found: Tile" + type + biome);
-                sourceTex = new Texture2D(subTileSize, subTileSize);
+                sourceTex = reusableTexture; // todo: this might end up weird lol
             }
             rotation = ((rotation % 4) + 4) % 4; // clamp rotation to 0-3
 
@@ -455,54 +510,46 @@ namespace TerrainGenerators
             // rotate the subsection of the texture
             if (rotation == 1)
             {
-                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
                 for (int i = 0; i < subTileSize; i++)
                 {
                     for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(j, subTileSize - i - 1, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
+                        reusableTexture.SetPixel(j, subTileSize - i - 1, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
                     }
                 }
-                sourceTex = newTex;
             }
             else if (rotation == 2)
             {
-                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
                 for (int i = 0; i < subTileSize; i++)
                 {
                     for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(subTileSize - i - 1, subTileSize - j - 1, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
+                        reusableTexture.SetPixel(subTileSize - i - 1, subTileSize - j - 1, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
                     }
                 }
-                sourceTex = newTex;
             }
             else if (rotation == 3)
             {
-                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
                 for (int i = 0; i < subTileSize; i++)
                 {
                     for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(subTileSize - j - 1, i, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
+                        reusableTexture.SetPixel(subTileSize - j - 1, i, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
                     }
                 }
-                sourceTex = newTex;
             }
             else // else: 0 (no rotation)
             {
-                Texture2D newTex = new Texture2D(subTileSize, subTileSize);
                 for (int i = 0; i < subTileSize; i++)
                 {
                     for (int j = 0; j < subTileSize; j++)
                     {
-                        newTex.SetPixel(i, j, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
+                        reusableTexture.SetPixel(i, j, sourceTex.GetPixel(i + xOffSet, j + yOffSet));
                     }
                 }
-                sourceTex = newTex;
             }
                 
-            return sourceTex;
+            return reusableTexture;
         }
 
 

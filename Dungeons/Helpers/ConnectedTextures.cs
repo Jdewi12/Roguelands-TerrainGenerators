@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 
 namespace TerrainGenerators.Helpers
@@ -19,6 +20,8 @@ namespace TerrainGenerators.Helpers
         /// <returns></returns>
         public static Texture2D GetTexture(bool[] tileCombination)
         {
+            while (!TerrainGenerators.TexturesReady)
+                Thread.Sleep(10);
             if (TerrainGenerators.GeneratedTextures.TryGetValue(SpawnerScript.curBiome, out Dictionary<byte, Texture2D> textures))
             {
                 if (textures.TryGetValue(EncodeBool(tileCombination), out Texture2D tex))
