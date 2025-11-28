@@ -9,7 +9,7 @@ namespace TerrainGenerators.Helpers
     /// <summary>
     /// An incomplete implementation. May add other helpers like Clamp and RoundToInt as needed.
     /// </summary>
-    public struct Vector2Int
+    public struct Vector2Int : IEquatable<Vector2Int>
     {
 #pragma warning disable IDE1006 // Naming Styles. Matching Unity's naming
         public int x;
@@ -26,7 +26,28 @@ namespace TerrainGenerators.Helpers
         public Vector2Int normalizedInt => new Vector2Int(x == 0 ? 0 : x > 0 ? 1 : -1, y == 0 ? 0 : y > 0 ? 1 : -1);
 
         public int this[int index] => index == 0 ? x : index == 1 ? y : throw new IndexOutOfRangeException("Index must be 0 for x or 1 for y.");
-        public bool Equals(Vector2Int other) => other.x == x && other.y == y;
+        public bool Equals(Vector2Int other)
+        {
+            return other.x == x && other.y == y;
+        }
+        public override bool Equals(object obj) => obj is Vector2Int vec && Equals(vec);
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hashCode = y.GetHashCode();
+                hashCode = (hashCode * 397) ^ x.GetHashCode();
+                return hashCode;
+            }
+        }
+        public static bool operator ==(Vector2Int vec1, Vector2Int vec2)
+        {
+            return vec1.Equals(vec2);
+        }
+        public static bool operator !=(Vector2Int vec1, Vector2Int vec2)
+        {
+            return !vec1.Equals(vec2);
+        }
 
         public static Vector2Int down => new Vector2Int(0, -1);
         public static Vector2Int left => new Vector2Int(-1, 0);

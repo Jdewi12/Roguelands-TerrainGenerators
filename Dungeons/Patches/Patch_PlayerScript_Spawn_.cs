@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using TerrainGenerators.Generators;
 using TerrainGenerators.Helpers;
 using UnityEngine;
 
@@ -17,14 +18,15 @@ namespace TerrainGenerators.Patches
     [HarmonyGadget("TerrainGenerators")]
     public static class Patch_PlayerScript_Spawn_
     {
+        static string[] solidSpawnMethodName = new string[] { "SpawnBully2", "SpawnDemon2", "SpawnGolem2", "SpawnMightShroom2" };
+        //static string[] passableSpawnMethodName = new string[] { "SpawnPlague2", "SpawnMykonogre2", "SpawnMoloch2", "SpawnIronclad2", "SpawnGlaedria2", "SpawnFellbug2", "SpawnExodus2", "SpawnDragon2", "SpawnDestroyer", "SpawnDemon2", "SpawnCatastrophia2", "SpawnApocalypse2"};
         [HarmonyTargetMethod]
         public static IEnumerable<MethodBase> TargetMethods()
         {
             var nestedTypes = typeof(PlayerScript).GetNestedTypes(BindingFlags.NonPublic);
-            string[] nestedMethodNames = new string[] { "SpawnBully2", "SpawnDemon2", "SpawnGolem2", "SpawnMightShroom2" };
             foreach (var type in nestedTypes)
             {
-                foreach (var methodName in nestedMethodNames)
+                foreach (var methodName in solidSpawnMethodName)//.Concat(passableSpawnMethodName))
                 {
                     if (type.Name.Contains(methodName)) // note: Make sure a methodName can't match multiple methods!
                     {
@@ -100,7 +102,7 @@ namespace TerrainGenerators.Patches
             var generator = Patch_SpawnerScript_World.CurrentGenerator;
             Vector3 playerWorldPos;
             if (PlayerScript.beaming) // if the level hasn't started yet, spawn relative to the spawn point, else the player.
-                playerWorldPos = generator.PlayerSpawn * generator.BlockSize;
+                playerWorldPos = (Vector3)GeneratorBase.WorldOffset + generator.PlayerSpawn * generator.BlockSize;
             else
                 playerWorldPos = InstanceTracker.PlayerScript.transform.position;
             float targetDistance = Mathf.Min(48, generator.GridWidth * generator.BlockSize / 2f);
@@ -118,7 +120,7 @@ namespace TerrainGenerators.Patches
                     // don't spawn at a teleporter
                     if (generator.TeleporterPositions.Any(p => p.x == x && p.y == y))
                         continue;
-                    Vector3 airSpawnWorldPos = new Vector2(x, y + 1f) * generator.BlockSize; // this spawns it in the middle of the chunk, which is annoying with Baby
+                    Vector3 airSpawnWorldPos = (Vector3)GeneratorBase.WorldOffset + new Vector3(x, y + 1f) * generator.BlockSize; // this spawns it in the middle of the chunk, which is annoying with Baby
                     float distToTarget = Mathf.Abs(Vector3.Distance(airSpawnWorldPos, playerWorldPos) - targetDistance);
                     if (distToTarget < closestDistToTarget)
                     {

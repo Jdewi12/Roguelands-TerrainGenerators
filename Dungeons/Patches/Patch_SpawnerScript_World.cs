@@ -153,7 +153,7 @@ namespace TerrainGenerators.Patches
         public static void GenerateWorldClient(int seed, int biome)
         {
             SpawnerScript.curBiome = biome;
-            CurrentGenerator = SelectGeneratorForBiome();
+            CurrentGenerator = SelectGeneratorForBiome(SpawnerScript.curBiome);
             RNG = new RNG(seed);
             CurrentGenerator.GenerateWalls(RNG);
             SpawnX = CurrentGenerator.PlayerSpawn.x;
@@ -171,9 +171,10 @@ namespace TerrainGenerators.Patches
         {
             if (!Network.isServer)
                 return;
-            if (PlanetRegistry.Singleton.GetAllEntries().Any(planet => planet.GetID() == SpawnerScript.curBiome && planet.Type == PlanetType.SPECIAL))
+            //if (PlanetRegistry.Singleton.GetAllEntries().Any(planet => planet.GetID() == SpawnerScript.curBiome && planet.Type == PlanetType.SPECIAL))
+            var entry = PlanetRegistry.Singleton.GetEntry(SpawnerScript.curBiome);
+            if (entry != null && entry.Type == PlanetType.SPECIAL)
                 return;
-
             //TerrainGenerators.Log("Starting custom generator");
             //TerrainGenerators.Log("Biome ID: " + SpawnerScript.curBiome);
 
@@ -214,12 +215,12 @@ namespace TerrainGenerators.Patches
             */
         }
 
-        private static GeneratorBase SelectGeneratorForBiome()
+        public static GeneratorBase SelectGeneratorForBiome(int planetID)
         {
-            switch (SpawnerScript.curBiome)
+            switch (planetID)
             {
                 case 0: // Desolate Canyon
-                    return new DesolateCanyon();
+                    return new Canyon();
                     //return new Rooms(); // TODO: FIX THIS!!!!!
                 case 1: // Deep Jungle
                     return new MagiciteLike();
@@ -230,7 +231,7 @@ namespace TerrainGenerators.Patches
                 case 4: // Ancient Ruins
                     return new MagiciteLike();
                 case 5: // Plaguelands
-                    return new DesolateCanyon();
+                    return new Canyon();
                 case 6: // Byfrost
                     return new Caves();
                 case 7: // Molten Crag

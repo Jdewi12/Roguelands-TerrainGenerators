@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using TerrainGenerators.Helpers;
 using TerrainGenerators.Patches;
@@ -20,6 +21,7 @@ namespace TerrainGenerators.Generators
         public abstract bool[,] WallsGrid { get; }
         public virtual Color MinimapWallsColor { get => GetMinimapColor(); }
         public abstract Vector2Int PlayerSpawn { get; } // grid position
+        public static Vector2 WorldOffset = new Vector2(200, 0); // todo: Move?
 
         public virtual int MinimapViewportWidth => GridWidth - 3;
         public virtual int MinimapViewportHeight => GridHeight - 3;
@@ -105,10 +107,10 @@ namespace TerrainGenerators.Generators
             Texture2D minimapTex = new Texture2D(minimapWidth, minimapHeight);
             minimapTex.SetPixels(mapGrid);
             TerrainGenerators.MinimapAPI.OverrideMinimap(minimapTex, 
-                leftWorld: (-padding - 0.5f) * BlockSize, 
-                rightWorld: (minimapWidth - padding - 0.5f) * BlockSize,
-                topWorld: (minimapHeight - padding - 1.5f) * BlockSize, 
-                botWorld: (-padding - 1.5f) * BlockSize, 
+                leftWorld: WorldOffset.x + (-padding - 0.5f) * BlockSize, 
+                rightWorld: WorldOffset.x + (minimapWidth - padding - 0.5f) * BlockSize,
+                topWorld: WorldOffset.y + (minimapHeight - padding - 1.5f) * BlockSize, 
+                botWorld: WorldOffset.y + (-padding - 1.5f) * BlockSize, 
                 mapViewportWidth: MinimapViewportWidth,
                 mapViewPortHeight: MinimapViewportHeight);
         }
@@ -134,7 +136,7 @@ namespace TerrainGenerators.Generators
                     float xOffset = (i + 0.5f - stands / 2f) * xScale;
 
                     GameObject standToSpawn = (GameObject)Resources.Load(name);
-                    Spawned.Add((GameObject)Network.Instantiate(standToSpawn, new Vector3(x * BlockSize + xOffset, (y + 0.5f) * BlockSize + yOffset, 0), Quaternion.identity, 0));
+                    Spawned.Add((GameObject)Network.Instantiate(standToSpawn, new Vector3(x * BlockSize + xOffset, (y + 0.5f) * BlockSize + yOffset, 0) + (Vector3)WorldOffset, Quaternion.identity, 0));
                 }
                 return;
             }
@@ -180,7 +182,7 @@ namespace TerrainGenerators.Generators
                     }
                 }
 
-                Spawned.Add((GameObject)Network.Instantiate(toSpawn, new Vector3(x * BlockSize + rng.Next(-(BlockSize / 2f - 2), (BlockSize / 2f - 2)), (y + 0.5f) * BlockSize + centreY + yOffset, z), Quaternion.identity, 0));
+                Spawned.Add((GameObject)Network.Instantiate(toSpawn, (Vector3)WorldOffset + new Vector3(x * BlockSize + rng.Next(-(BlockSize / 2f - 2), (BlockSize / 2f - 2)), (y + 0.5f) * BlockSize + centreY + yOffset, z), Quaternion.identity, 0));
             }
         }
 
@@ -222,8 +224,8 @@ namespace TerrainGenerators.Generators
 
         public virtual void SpawnWall(int x, int y, Texture2D tex)
         {
-            GameObject tile = GameObject.Instantiate(TerrainGenerators.TilePrefab, 
-                new Vector3(x * BlockSize, y * BlockSize, 2f/*0.15f*/), Quaternion.Euler(180, 0, 0));
+            GameObject tile = GameObject.Instantiate(TerrainGenerators.TilePrefab,
+                (Vector3)WorldOffset + new Vector3(x * BlockSize, y * BlockSize, 2f/*0.15f*/), Quaternion.Euler(180, 0, 0));
             Spawned.Add(tile);
             tile.transform.localScale = new Vector3(1, 1, 1) * BlockSize / 2;
             tile.GetComponent<MeshRenderer>().material.SetTexture("_MainTex", tex);
@@ -264,15 +266,15 @@ namespace TerrainGenerators.Generators
 
         public virtual void SpawnObjective(int x, int y)
         {
-            float worldX = x * BlockSize;
-            float worldY = (y + 0.5f) * BlockSize + 1.75f; // some vertical offset needed
+            float worldX = WorldOffset.x + x * BlockSize;
+            float worldY = WorldOffset.y + (y + 0.5f) * BlockSize + 1.75f; // some vertical offset needed
             Spawned.Add((GameObject)Network.Instantiate((GameObject)Resources.Load("objective/objective1"), new Vector3(worldX, worldY, 4.75f /*z may vary a bit*/), Quaternion.identity, 0));
         }
 
         public virtual void SpawnTeleporter(int x, int y, int id)
         {
-            float worldX = x * BlockSize;
-            float worldY = (y + 0.5f) * BlockSize;
+            float worldX = WorldOffset.x + x * BlockSize;
+            float worldY = WorldOffset.y + (y + 0.5f) * BlockSize;
             int nextBiome;
             if (id == 3)
                 //nextBiome = 98; // back to ship
@@ -311,10 +313,9 @@ namespace TerrainGenerators.Generators
             NetworkStuffField.SetValue(ChunkScript, new GameObject[width*height]);
 
             List<Vector2Int> groundSpawnSpots = new List<Vector2Int>();
-            float maxHeuristic = 0;
             for (int x = 0; x < width; x++)
             {
-                for (int y = 0; y < wallsGrid.GetLength(1) - 1; y++)
+                for (int y = 0; y < height - 1; y++)
                 {
                     if (x == PlayerSpawn.x && (y == PlayerSpawn.y)) // the player spawns here
                         continue;
@@ -322,45 +323,124 @@ namespace TerrainGenerators.Generators
                         continue;
                     if (wallsGrid.IsWall(x, y) && !wallsGrid.IsWall(x, y + 1)) // if this tile is ground and the one above is air
                     {
+                        // only spawn if not too close to player spawn
                         Vector2Int vec = new Vector2Int(x, y);
-                        if (Vector2Int.SqrDistance(vec, PlayerSpawn) > 3 * 3) // only spawn if not too close to player spawn
+                        int spawnDistanceAllowed = 4 * 16 / BlockSize; // 4 chunks at size 16; 8 chunks at size 8
+                        if (Vector2Int.SqrDistance(vec, PlayerSpawn) > spawnDistanceAllowed * spawnDistanceAllowed)
                         {
-                            float heuristic = Mathf.Abs(x - PlayerSpawn.x) - y / 8f;
-                            if (heuristic > maxHeuristic)
-                            {
-                                groundSpawnSpots.Insert(rng.Next(0, groundSpawnSpots.Count / 2), vec);
-                                maxHeuristic = heuristic;
-                            }
-                            else
-                                groundSpawnSpots.Add(vec);
+                            groundSpawnSpots.Add(vec);
                         }
                     }
                 }
             }
 
-            foreach(var spawnSpot in groundSpawnSpots)
+            Dictionary<Vector2Int, float> distancesFromSpawn = new Dictionary<Vector2Int, float>();
+            Vector2Int startPos = PlayerSpawn;
+            float maxDist = 0; // technically not necessarily the maximum distance because a shorter path to a position may be found afterwards.
+            FloodDistance(startPos, 0);
+            void FloodDistance(Vector2Int pos, float existingDistance) // calculate each position's distance from spawn
             {
+                if (!distancesFromSpawn.ContainsKey(pos))
+                    distancesFromSpawn.Add(pos, existingDistance);
+                else if (distancesFromSpawn[pos] > existingDistance)
+                    distancesFromSpawn[pos] = existingDistance;
+                else // we've already visited this position via a shorter route
+                    return;
+                if (existingDistance > maxDist)
+                    maxDist = existingDistance;
+                var up = pos + Vector2Int.up;
+                var right = pos + Vector2Int.right;
+                var down = pos + Vector2Int.down;
+                var left = pos + Vector2Int.left;
+                Vector2Int[] neighbours = new Vector2Int[4] { up, right, down, left };
+                float nextDistance = existingDistance + 1;
+                foreach(var neighbour in neighbours)
+                {
+                    if (neighbour.x >= width
+                        || neighbour.y >= height
+                        || neighbour.x < 0
+                        || neighbour.y < 0)
+                        continue;
+                    if (wallsGrid[neighbour.x, neighbour.y])
+                        continue;
+                    if (neighbour == up)
+                        nextDistance += 0.5f; // going up is annoying
+                    FloodDistance(neighbour, nextDistance);
+                }
+            }
+            string s = "";
+            for (int j = height - 1; j >= 0 ; j--)
+            {
+                s += "\r\n";
+                for (int i = 0; i < width; i++)
+                {
+
+                    if (wallsGrid[i, j])
+                        s += "#";
+                    else if (distancesFromSpawn.TryGetValue(new Vector2Int(i, j), out float distance))
+                        s += Mathf.FloorToInt(distance / (GridWidth + GridHeight) * 9); // 0-9
+                    else
+                        s += "?";
+
+                }
+            }
+            TerrainGenerators.Log(s);
+
+            groundSpawnSpots = groundSpawnSpots.OrderByDescending(
+                vec => distancesFromSpawn.TryGetValue(vec + Vector2Int.up, out float dist) ? dist : Vector2.Distance(vec + Vector2Int.up, PlayerSpawn)
+                ).ToList();
+
+            bool spawnedSpecial = false;
+            while (groundSpawnSpots.Count > 0)
+            {
+                if(SpawnerScript.curBiome == 12 && !spawnedSpecial)
+                {
+                    // spawn chalice close to player
+                    Vector2Int bookSpot = distancesFromSpawn.FirstOrDefault(posAndDist => 
+                    {
+                        Vector2Int pos = posAndDist.Key;
+                        if (!WallsGrid.IsWall(pos.x, pos.y - 1)) // only spawn on ground
+                            return false;
+                        float posDist = posAndDist.Value;
+                        return posDist > 1 && posDist < 4; // chunks
+                    }).Key;
+                    if (Vector2Int.Equals(bookSpot, default(Vector2Int)))
+                        bookSpot = PlayerSpawn;
+
+                    var book = (GameObject)Network.Instantiate(Resources.Load("obj/chaliceBook"), (Vector3)WorldOffset + bookSpot * BlockSize + new Vector3(0, -2, 0.2f), Quaternion.identity, 0);
+                    Spawned.Add(book);
+                    spawnedSpecial = true;
+                }
+                // pick one of n furthest spots from the player remaining
+                int i = rng.Next(0, 10); // upper bound exclusive 
+                if(i >= groundSpawnSpots.Count)
+                    i = groundSpawnSpots.Count - 1;
+                Vector2Int spawnSpot = groundSpawnSpots[i];
+                groundSpawnSpots.RemoveAt(i);
+                TerrainGenerators.Log($"({spawnSpot.x},{spawnSpot.y}) {(distancesFromSpawn.TryGetValue(spawnSpot + Vector2Int.up, out float dist) ? dist.ToString() : "?")}");
                 if (TeleporterPositions.Count < 3)
                 {
                     SpawnTeleporter(spawnSpot.x, spawnSpot.y, TeleporterPositions.Count);
-                    continue;
                 }
-
-                DoVanillaGroundSpawn(spawnSpot, rng);
+                else
+                {
+                    DoVanillaGroundSpawn(spawnSpot, rng);
+                }
             }
         }
 
         public virtual void DoVanillaGroundSpawn(Vector2Int spawnSpot, RNG rng)
         {
             // an objective (resource machine) can spawn in addition to normal spawns.
-            if (rng.Next(0f, 1f) < 0.08f) // 8% chance per chunk
+            float objectiveChance = 0.08f * BlockSize / 16; // 8% per chunks at size 16; 4% at size 8
+            if (rng.Next(0f, 1f) < objectiveChance) //
                 SpawnObjective(spawnSpot.x, spawnSpot.y);
 
 
             // do vanilla spawns
             // each spawn gets at least minSpacing world units of space (before randomness or offset in spawn pos)
             const float minSpacing = 5f;
-            const float rngVariation = 1f;
+            const float rngVariation = 1f; // todo: Scale with BlockSize?
             int spawnsPerChunk = Mathf.FloorToInt(BlockSize / minSpacing);
             if (spawnsPerChunk < 1)
                 spawnsPerChunk = 1;
@@ -368,11 +448,12 @@ namespace TerrainGenerators.Generators
 
             for (int s = 0; s < spawnsPerChunk; s++)
             {
-                const float spawnChance = 0.67f;
+                float spawnsPerM = spawnsPerChunk / BlockSize;
+                float spawnChance = 0.67f / spawnsPerM * (3/16f); // try to spawn around 2 spawnables every 16 units
                 if (rng.Next(0f, 1f) > spawnChance)
                     continue;
                 float distanceIn = s * spawnSeparation + spawnSeparation / 2f;
-                ChunkScript.transform.position = new Vector3(
+                ChunkScript.transform.position = (Vector3)WorldOffset + new Vector3(
                     x: (spawnSpot.x - 0.5f) * BlockSize + distanceIn + rng.Next(-rngVariation, rngVariation),
                     y: (spawnSpot.y + 0.5f) * BlockSize + 0.375f,
                     z: 0f);

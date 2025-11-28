@@ -4,9 +4,13 @@ using GadgetCore.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using TerrainGenerators.Generators;
 using TerrainGenerators.Helpers;
 using TerrainGenerators.Patches;
 using TerrainGenerators.Scripts;
@@ -23,15 +27,19 @@ namespace TerrainGenerators
         public static Dictionary<int, Dictionary<byte, Texture2D>> GeneratedTextures = new Dictionary<int, Dictionary<byte, Texture2D>>();
         public static Dictionary<string, Texture2D> OtherTextures = new Dictionary<string, Texture2D>();
         public static NetworkView RPCHandler;
+        public static Thread TextureThread = null;
 
         public const string MOD_VERSION = "1.2";
         public const string CONFIG_VERSION = "1.0";
 
         internal static MinimapAPI MinimapAPI;
+        internal static GadgetLogger InternalLogger;
+        internal static GadgetConfig InternalConfig;
 
         protected override void LoadConfig()
         {
-            InternalLogger = base.Logger;
+            InternalLogger = Logger;
+            InternalConfig = Config;
             Log("TerrainGenerators V" + MOD_VERSION);
             Config.Load();
 
@@ -50,8 +58,6 @@ namespace TerrainGenerators
         {
             return "Adds terrain generators."; // TODO: Write a better gadget description
         }
-
-        internal static GadgetLogger InternalLogger;
         
         internal static void Log(string text)
         {
@@ -99,8 +105,8 @@ namespace TerrainGenerators
             LoadPackedTextures();
 
             var dummy = new GameObject("Jdewi Dummy");
-            dummy.AddComponent<DummyMonoBehaviour>()
-                .StartCoroutine(DelayTextureGeneration(dummy));
+            var dummyMB = dummy.AddComponent<DummyMonoBehaviour>();
+            dummyMB.StartCoroutine(DelayedPlanetHandling(destroyWhenDone: dummy));
 
             if (Gadgets.GetGadget("Minimap") != null)
             {
@@ -111,16 +117,92 @@ namespace TerrainGenerators
             Log("Gadget Initialised");
         }
 
-        public static IEnumerator DelayTextureGeneration(GameObject destroyWhenDone)
+        public static IEnumerator DelayedPlanetHandling(GameObject destroyWhenDone)
         {
+            Stopwatch sw = new Stopwatch();
             yield return null; // wait till after the first frame, to make sure mods have all registered their custom planets
+            sw.Start();
             if (GeneratedTextures.Count == 0)
             {
-                ModdedTextures.GenerateTextures();
+                ModdedTextures.LoadModdedTextures();
+                sw.Stop();
+                Log("Loaded modded textures in " + sw.ElapsedMilliseconds + "ms");
+                sw.Reset();
+                sw.Start();
                 GenerateTextures();
+                sw.Stop();
+                Log("Generated all chunk textures in " + sw.ElapsedMilliseconds + "ms");
             }
+
+
+            //GenerateConfig();
+
             if(destroyWhenDone != null)
                 GameObject.Destroy(destroyWhenDone);
+        }
+
+        public static void GenerateConfig() // unfinished and unused.
+        {
+            foreach (int biomeID in Biomes)
+            {
+                string planetName;
+                var planetInfo = PlanetRegistry.Singleton.GetEntry(biomeID);
+                if (planetInfo != null)
+                {
+                    planetName = planetInfo.Name;
+                }
+                else
+                {
+                    switch (biomeID)
+                    {
+                        case 0:
+                            planetName = "Desolate Canyon";
+                            break;
+                        //return new Rooms(); // TODO: FIX THIS!!!!!
+                        case 1:
+                            planetName = "Deep Jungle";
+                            break;
+                        case 2:
+                            planetName = "Hollow Caverns";
+                            break;
+                        case 3:
+                            planetName = "Shroomtown";
+                            break;
+                        case 4:
+                            planetName = "Ancient Ruins";
+                            break;
+                        case 5:
+                            planetName = "Plaguelands";
+                            break;
+                        case 6:
+                            planetName = "Byfrost";
+                            break;
+                        case 7:
+                            planetName = "Molten Crag";
+                            break;
+                        //case 8: // Mech City
+                        case 9:
+                            planetName = "Demon's Rift";
+                            break;
+                        case 10:
+                            planetName = "Whisperwood";
+                            break;
+                        // case 11: // Old Earth
+                        case 12:
+                            planetName = "Forbidden Arena";
+                            break;
+                        case 13:
+                            planetName = "Cathedral";
+                            break;
+                        default:
+                            Log("Unknown planet id: " + biomeID);
+                            continue;
+                    }
+                }
+                var defaultGeneratorSettings = Patch_SpawnerScript_World.SelectGeneratorForBiome(biomeID);
+                InternalConfig.ReadInt(planetName + " width", defaultValue: defaultGeneratorSettings.GridWidth, comments: "Width in chunks.");
+                InternalConfig.Save();
+            }
         }
 
         public static List<int> Biomes = new List<int>();
@@ -237,7 +319,7 @@ namespace TerrainGenerators
                     {
                         for (int y = 0; y < subTileSize; y++)
                         {
-                            // why do is everything inverted??? :(
+                            // why is everything inverted??? :(
                             tex.SetPixel(fullTileSize - 1 - x, fullTileSize - 1 - y, bottomLeftTex.GetPixel(x, y));
                             tex.SetPixel(subTileSize -1 - x, fullTileSize - 1 - y, bottomRightTex.GetPixel(x, y));
                             tex.SetPixel(fullTileSize - 1 - x, subTileSize - 1 - y, topLeftTex.GetPixel(x, y));

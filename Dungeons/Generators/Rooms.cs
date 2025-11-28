@@ -15,20 +15,21 @@ namespace TerrainGenerators.Generators
 
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
+        public override int GridWidth => numRoomsHorizontal * (maxRoomWidth + horizontalPadding);
+        public override int GridHeight => numRoomsVertical * (maxRoomHeight + verticalPadding);
+
+        const int maxRoomWidth = 6;
+        const int maxRoomHeight = 6;
+        const int numRoomsHorizontal = 3;
+        const int numRoomsVertical = 2;
+        const int horizontalPadding = 2;
+        const int verticalPadding = 3;
 
         public override void GenerateWalls(RNG rng)
         {
             // max internal width/height of rooms
-            const int maxRoomWidth = 6;
-            const int maxRoomHeight = 6;
-            const int numRoomsHorizontal = 3;
-            const int numRoomsVertical = 3;
-            const int horizontalPadding = 1;
-            const int verticalPadding = 2;
-            const int worldWidth = numRoomsHorizontal * (maxRoomWidth + horizontalPadding);
-            const int worldHeight = numRoomsVertical * (maxRoomHeight + verticalPadding);
 
-            wallsGrid = new bool[worldWidth, worldHeight];
+            wallsGrid = new bool[GridWidth, GridHeight];
                 
 
             int[] stairsIndices = new int[numRoomsVertical - 1];
@@ -46,7 +47,7 @@ namespace TerrainGenerators.Generators
                     // create wall between rooms to the right of every room column
                     for(int x = startX + maxRoomWidth; x < startX + maxRoomWidth + horizontalPadding; x++)
                     {
-                        for(int y = 0; y < worldHeight; y++)
+                        for(int y = 0; y < GridWidth; y++)
                         {
                             wallsGrid[x, y] = true;
                         }
@@ -61,7 +62,7 @@ namespace TerrainGenerators.Generators
                         // create wall between rooms above every room row
                         for (int y = startY + maxRoomHeight; y < startY + maxRoomHeight + verticalPadding; y++)
                         {
-                            for (int x = 0; x < worldWidth; x++)
+                            for (int x = 0; x < GridWidth; x++)
                             {
                                wallsGrid[x, y] = true;
                             }
@@ -87,8 +88,9 @@ namespace TerrainGenerators.Generators
                 }
             }
             List<GridNode> connectedNodes = new List<GridNode>();
-            AddAllConnectedNodes(unconnectedNodes[0]); // pick first rooma starting room
+            // pick first rooma starting room
             playerSpawn = unconnectedNodes[0].Position;
+            AddAllConnectedNodes(unconnectedNodes[0]); 
             TerrainGenerators.Log("D");
             // Recursively adds node and all of it's connections to connectedNodes and removes them from unconnectedNodes.
             void AddAllConnectedNodes(GridNode node)
@@ -178,10 +180,10 @@ namespace TerrainGenerators.Generators
                 TerrainGenerators.Log("H");
             }
             string s = "";
-            for (int j = 0; j < worldHeight; j++)
+            for (int j = 0; j < GridHeight; j++)
             {
                 string row = "\r\n";
-                for(int i = 0; i < worldWidth; i++)
+                for(int i = 0; i < GridWidth; i++)
                 {
                     row += wallsGrid[i, j] ? "#" : "."; 
                 }

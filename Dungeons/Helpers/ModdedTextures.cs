@@ -11,10 +11,15 @@ namespace TerrainGenerators.Helpers
     {
         public static Dictionary<int, Color> CustomPlanetIDColors = new Dictionary<int, Color>();
 
-        public static void GenerateTextures()
+        public static void LoadModdedTextures()
         {
             foreach (var planetInfo in PlanetRegistry.Singleton.GetAllEntries())
             {
+                if (planetInfo.Type == PlanetType.SPECIAL)
+                {
+                    TerrainGenerators.Log("Ignoring " + planetInfo.Name + " (PlanetType SPECIAL)");
+                    continue;
+                }    
                 int id = planetInfo.GetID();
                 var zoneTex = planetInfo.ZoneTex as Texture2D;// ?? planetInfo.EntranceMat.mainTexture;
                 if (zoneTex == null)

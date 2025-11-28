@@ -25,7 +25,7 @@ namespace TerrainGenerators.Generators
         bool[,] wallsGrid;
 
 
-        public Caves(Color? minimapWallsColor = null, int gridWidth = 32, int gridHeight = 20)
+        public Caves(Color? minimapWallsColor = null, int gridWidth = 38, int gridHeight = 18)
         {
             if (minimapWallsColor != null)
                 this.minimapWallsColor = minimapWallsColor.Value;
@@ -37,14 +37,16 @@ namespace TerrainGenerators.Generators
 
         public override void GenerateWalls(RNG rng)
         {
-            int numRooms = Mathf.RoundToInt((GridWidth / 8f) * (GridHeight / 8f) + rng.Next(0, 3)); // RNG.Next is upper bounds exclusive for ints
-            if (numRooms <= 1)
-                numRooms = 2;
-            float maxRadius = Mathf.Clamp(Mathf.Min(GridWidth, GridHeight) - 2, min: 1, max: 5);
+            int worldArea = gridWidth * BlockSize * gridHeight * BlockSize;
+            int numNodes = 2 + Mathf.RoundToInt(worldArea / (60 * 60) * rng.Next(1f, 1.2f)); // imagine a grid of nodes 60 units apart in each direction
+            if (numNodes < 2)
+                numNodes = 2;
+            //int numNodes = 1 + Mathf.RoundToInt((GridWidth / 7f * BlockSize / 16) * (GridHeight / 7f * BlockSize / 16) + rng.Next(0f, 2f));
+            float maxRadius = Mathf.Clamp(Mathf.Min(GridWidth, GridHeight) - 2, min: 1, max: 4) * 8 / BlockSize; // scale up radius as blocksize gets smaller
             float maxRadiusSqrt = Mathf.Sqrt(maxRadius);
 
             List<OneWayGridNode> unconnectedRooms = new List<OneWayGridNode>();
-            for (int i = 0; i < numRooms; i++)
+            for (int i = 0; i < numNodes; i++)
             {
                 // x^2 distribution; makes large radius rare
                 int radius = Mathf.RoundToInt(Mathf.Pow(rng.Next(1f, maxRadiusSqrt), 2));
@@ -145,138 +147,143 @@ namespace TerrainGenerators.Generators
                 }
         }
 
-        public static void Tunnel(Vector2Int position1, Vector2Int position2, int radius1, int radius2, ref bool[,] grid)
+        public static void Tunnel(Vector2 position1, Vector2 position2, int radius1, int radius2, ref bool[,] grid)
         {
-            if (radius1 <= 0 && radius2 <= 0)
-                return;
-            int x1 = position1.x;
-            int y1 = position1.y;
-            int x2 = position2.x;
-            int y2 = position2.y;
-            int thickness = (radius1 + radius2) / 2;
-            if (thickness < 2) // 1-wide tunnels will block off when diagonal
-                thickness = 2;
+            float x1 = position1.x;
+            float y1 = position1.y;
+            float x2 = position2.x;
+            float y2 = position2.y;
+            float thickness = (radius1 + radius2) / 2f;
 
-            int xLen = x2 - x1;
-            int yLen = y2 - y1;
-            int dirX = xLen >= 0 ? 1 : -1;
-            int dirY = yLen >= 0 ? 1 : -1;
-            if (xLen < 0)
-                xLen = -xLen;
-            if (yLen < 0)
-                yLen = -yLen;
+            float dX = x2 - x1;
+            float dY = y2 - y1;
+            float incX = Mathf.Sign(Mathf.Sign(dX) + 0.5f);
+            float incY = Mathf.Sign(Mathf.Sign(dY) + 0.5f);
+            if (dX < 0)
+                dX = -dX;
+            if (dY < 0)
+                dY = -dY;
 
-            int primaryLength; // The primary axis length
-            int stepOuterX0;
-            int stepOuterY0;
-            int stepOuterX1;
-            int stepOuterY1;
+            float len;
+            float sd0x;
+            float sd0y;
+            float dd0x;
+            float dd0y;
 
-            int stepInnerX0;
-            int stepInnerY0;
-            int stepInnerX1 = dirX;
-            int stepInnerY1 = dirY;
+            float sd1x;
+            float sd1y;
+            float dd1x;
+            float dd1y;
 
-            int errorStepX = 2 * xLen;
-            int errorStepY = 2 * yLen;
-            int errorStepDiagonal;
+            float ku;
+            float kv;
+            float kd;
 
-            int errorThreshold;
-            
-            if (xLen > yLen) // line is primary horizontal
+            float kt; // threshold for error term
+            if (dX > dY)
             {
-                // Outer loop steps
-                primaryLength = xLen;
-                stepOuterX0 = 0;
-                stepOuterY0 = dirY;
-                stepOuterX1 = -dirX;
-                stepOuterY1 = dirY;
+                len = dX;
+                sd0x = 0;
+                sd0y = incY;
+                dd0x = -incX;
+                dd0y = incY;
 
-                // Inner loop steps
-                stepInnerX0 = dirX;
-                stepInnerY0 = 0;
-                errorStepDiagonal = errorStepY - errorStepX;
+                sd1x = incX;
+                sd1y = 0;
+                dd1x = incX;
+                dd1y = incY;
 
-                errorThreshold = xLen - errorStepY;
+                ku = 2 * dX;
+                kv = 2 * dY;
+                kd = kv - ku;
+
+                kt = dX - kv;
             }
-            else // line is primarily vertical
+            else
             {
-                primaryLength = yLen;
-                stepOuterX0 = dirX;
-                stepOuterY0 = 0;
-                stepOuterX1 = dirX;
-                stepOuterY1 = -dirY;
+                len = dY;
+                sd0x = incX;
+                sd0y = 0;
+                dd0x = incX;
+                dd0y = -incY;
 
-                stepInnerX0 = 0;
-                stepInnerY0 = dirY;
-                errorStepDiagonal = errorStepY - errorStepX;
+                sd1x = 0;
+                sd1y = incY;
+                dd1x = incX;
+                dd1y = incY;
 
-                errorThreshold = yLen - errorStepY;
+                ku = 2 * dY;
+                kv = 2 * dX;
+                kd = kv - ku;
+
+                kt = dY - kv;
             }
 
-            float totalThickness = 2 * thickness * Mathf.Sqrt(xLen * xLen + yLen * yLen); // the "area" of the line (thickness*length), doubled because
-                                                                                          // errorStepX and errorStepY are too.
-            int outerError = 0;
-            int innerLoopError = 0;
-            int thicknessDone = 0;
+            float tk = 2 * thickness * Mathf.Sqrt(dX * dX + dY * dY);
+            float d0 = 0; // outer loop error term
+            float d1 = 0; // inner loop error term
+            float dd = 0; // thickness error term
 
-            while (thicknessDone < totalThickness)
+            while (dd < tk)
             {
-                BresenhamLineDraw(x1, y1, primaryLength, stepInnerX0, stepInnerY0, stepInnerX1, stepInnerY1, innerLoopError, errorThreshold, errorStepY, errorStepDiagonal, ref grid);
-                if (outerError < errorThreshold)
+                BresenhamLineDraw(x1, y1, d1, len, sd1x, sd1y, dd1x, dd1y, d1, kt, kv, kd, ref grid);
+                if (d0 < kt)
                 {
-                    x1 += stepOuterX0;
-                    y1 += stepOuterY0;
+                    x1 += sd0x;
+                    y1 += sd0y;
                 }
                 else
                 {
-                    thicknessDone += errorStepY;
-                    outerError -= errorStepX;
-                    if (innerLoopError < errorThreshold)
+                    dd += kv;
+                    d0 -= ku;
+                    if (d1 < kt)
                     {
-                        x1 += stepOuterX1;
-                        y1 += stepOuterY1;
-                        innerLoopError -= errorStepY;
+                        x1 += dd0x;
+                        y1 += dd0y;
+                        d1 -= kv;
                     }
                     else
                     {
-                        if (xLen > yLen)
-                            x1 += stepOuterX1;
+                        if (dX > dY)
+                            x1 += dd0x;
                         else
-                            y1 += stepOuterY1;
-                        innerLoopError -= errorStepDiagonal;
-                        if (thicknessDone > totalThickness)
-                            return; // breakout on the extra line (?)
-                        BresenhamLineDraw(x1, y1, primaryLength, stepInnerX0, stepInnerY0, stepInnerX1, stepInnerY1, innerLoopError, errorThreshold, errorStepY, errorStepDiagonal, ref grid);
-                        if (xLen > yLen)
-                            y1 += stepOuterY1;
+                            y1 += dd0y;
+                        d1 = d1 - kd;
+                        if (dd > tk)
+                            return; // breakout on the extra line (?????)
+                        BresenhamLineDraw(x1, y1, d1, len, sd1x, sd1y, dd1x, dd1y, d1, kt, kv, kd, ref grid);
+                        if (dX > dY)
+                            y1 += dd0y;
                         else
-                            x1 += stepOuterX1;
+                            x1 += dd0x;
                     }
                 }
 
-                thicknessDone += errorStepX;
-                outerError += errorStepY;
+                dd += ku;
+                d0 += kv;
 
             }
+
+
         }
 
-        public static void BresenhamLineDraw(int x, int y, int primaryLength, int stepInnerX0, int stepInnerY0, int stepInnerX1, int stepInnerY1, int innerLoopError, int errorThreshold, int errorStepY, int errorStepDiagonal, ref bool[,] grid)
+        public static void BresenhamLineDraw(float x, float y, float d, float len, float sd1x, float sd1y, float dd1x, float dd1y, float d1, float kt, float kv, float kd, ref bool[,] grid)
         {
-            for (int i = 0; i <= primaryLength; i++)
+            for (int i = 0; i <= len; i++)
             {
-                grid.SetWall(x, y, false);
-                if (innerLoopError <= errorThreshold)
+                //grid[Mathf.RoundToInt(x), Mathf.RoundToInt(y)] = false;
+                grid.SetWall(Mathf.RoundToInt(x), Mathf.RoundToInt(y), false);
+                if (d1 <= kt)
                 {
-                    x += stepInnerX0;
-                    y += stepInnerY0;
-                    innerLoopError += errorStepY;
+                    x += sd1x;
+                    y += sd1y;
+                    d1 += kv;
                 }
                 else
                 {
-                    x += stepInnerX1;
-                    y += stepInnerY1;
-                    innerLoopError += errorStepDiagonal;
+                    x += dd1x;
+                    y += dd1y;
+                    d1 += kd;
                 }
             }
         }

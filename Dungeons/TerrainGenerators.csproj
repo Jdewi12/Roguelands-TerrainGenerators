@@ -30,9 +30,6 @@
     <DebugType>full</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Generators\Caves - Copy.cs.DISABLED" />
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\0Harmony.dll</HintPath>
       <Private>false</Private>
@@ -52,6 +49,10 @@
     <Reference Include="Minimap">
       <HintPath>..\..\Minimap\Minimap\Release\Minimap.dll</HintPath>
       <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Threading">
+      <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\System.Threading.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\GadgetCore Roguelands\Roguelands_Data\Managed\UnityEngine.dll</HintPath>

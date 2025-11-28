@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace TerrainGenerators.Generators
 {
-    public class DesolateCanyon : GeneratorBase
+    public class Canyon : GeneratorBase
     {
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
