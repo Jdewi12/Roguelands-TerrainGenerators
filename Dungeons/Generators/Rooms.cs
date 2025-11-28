@@ -18,7 +18,7 @@ namespace TerrainGenerators.Generators
         public override int GridWidth => numRoomsHorizontal * (maxRoomWidth + horizontalPadding);
         public override int GridHeight => numRoomsVertical * (maxRoomHeight + verticalPadding);
 
-        const int maxRoomWidth = 6;
+        const int maxRoomWidth = 6; // should probably be at least 4
         const int maxRoomHeight = 6;
         const int numRoomsHorizontal = 3;
         const int numRoomsVertical = 2;
@@ -30,6 +30,7 @@ namespace TerrainGenerators.Generators
             // max internal width/height of rooms
 
             wallsGrid = new bool[GridWidth, GridHeight];
+            TerrainGenerators.Log(GridWidth + "," + GridHeight);
                 
 
             int[] stairsIndices = new int[numRoomsVertical - 1];
@@ -47,13 +48,13 @@ namespace TerrainGenerators.Generators
                     // create wall between rooms to the right of every room column
                     for(int x = startX + maxRoomWidth; x < startX + maxRoomWidth + horizontalPadding; x++)
                     {
-                        for(int y = 0; y < GridWidth; y++)
+                        for(int y = 0; y < GridHeight; y++)
                         {
                             wallsGrid[x, y] = true;
                         }
                     }
-                
-                for(int j = 0; j < numRoomsVertical; j++)
+
+                for (int j = 0; j < numRoomsVertical; j++)
                 {
                     int startY = j * (maxRoomHeight + verticalPadding);
                     if (i == 0)
@@ -71,11 +72,10 @@ namespace TerrainGenerators.Generators
                     TerrainGenerators.Log("A");
                     GridNode botConnection;
                     GridNode topConnection;
-                    if (j < numRoomsVertical - 1 && stairsIndices[j] == i)
+                    if (j < numRoomsVertical - 1 && stairsIndices[j] == i) // top floor doesn't need stairs
                         GenerateStaircase(startX, startY, startX + maxRoomWidth - 1, startY + maxRoomHeight - 1, rng, out topConnection, out botConnection);
                     else
-                        //GenerateRoom(startX, startY, startX + maxRoomWidth - 1, startY + maxRoomHeight - 1, rng, out topConnection, out botConnection);
-                        GenerateStaircase(startX, startY, startX + maxRoomWidth - 1, startY + maxRoomHeight - 1, rng, out topConnection, out botConnection);
+                        GenerateRoom(startX, startY, startX + maxRoomWidth - 1, startY + maxRoomHeight - 1, rng, out topConnection, out botConnection);
                     // the top and bottom of the room should always be connected together
                     TerrainGenerators.Log("B");
                     if (!topConnection.Connections.Contains(botConnection))
@@ -368,8 +368,74 @@ namespace TerrainGenerators.Generators
 
         public void GenerateRoom(int startX, int startY, int endX, int endY, RNG rng, out GridNode topConnection, out GridNode botConnection)
         {
+            if(true)//rng.Next(0, 4) == 0) // 25% chance to generate a staircase instead
+            {
+                GenerateStaircase(startX, startY, endX, endY, rng, out topConnection, out botConnection);
+                return;
+            }
+
             int width = endX - startX + 1;
             int height = endY - startY + 1;
+            ArchAndIsland(out topConnection, out botConnection);
+
+            void ArchAndIsland(out GridNode _topConnection, out GridNode _botConnection)
+            {
+                int platformStart;
+                int platformEnd;
+                platformStart = width / 2 - 1; // integer division, will round down on odd-width room
+
+                int leftArchStart = Mathf.Min(width / 4, platformStart - 1);
+                int rightArchEnd = width - leftArchStart - 1;
+                int archWidth = rightArchEnd - leftArchStart;
+                float archRadius = archWidth / 2f;
+                float archStartY = height - archRadius - 1;
+                if (width % 2 == 0) // even width
+                {
+                    platformEnd = width / 2 + 1;
+                }
+                else // odd width
+                {
+                    platformEnd = width / 2 + 2;
+                }
+                for (int i = 0; i < width; i++)
+                {
+                    int x = startX + i;
+                    float centreRelativeX = i - width / 2f;
+                    float archY = Mathf.Sqrt(archRadius * archRadius - centreRelativeX * centreRelativeX) + archStartY;
+                    for (int j = 0; j < height; j++)
+                    {
+                        int y = startY + j;
+                        // first 2 layers are air
+                        if (j < 2) 
+                        {
+                            continue;
+                        }
+                        // floating platform on 3rd layer
+                        if (j == 2 && i >= platformStart && i <= platformEnd)
+                        {
+                            wallsGrid[x, y] = true;
+                            continue;
+                        }
+                        // walls on left/right of layers 4+
+                        if(i < leftArchStart || i > rightArchEnd)
+                        {
+                            WallsGrid[x, y] = true;
+                            continue;
+                        }
+                        // arch over top of middle of room
+                        {
+                            if (j >= archY)
+                                WallsGrid[x, y] = true;
+                        }
+                    }
+                }
+
+                _botConnection = new GridNode(new Vector2Int(startX, startY));
+                _topConnection = new GridNode(new Vector2Int(endX, endY));
+            }
+
+
+
             botConnection = new GridNode(new Vector2Int(startX, startY));
             topConnection = new GridNode(new Vector2Int(endX, endY));
         }
