@@ -78,17 +78,42 @@
     </None>
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-	<GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
-		<Output TaskParameter="Assemblies" ItemName="AssemblyInfo" />
-	</GetAssemblyIdentity>
-	<PropertyGroup>
-		<VersionInfo>$([System.Text.RegularExpressions.Regex]::Replace("%(AssemblyInfo.Version)", "^(.+?)(\.0+)+$", "$1"))</VersionInfo>
-	</PropertyGroup>
-	<!-- note: This doesn't delete previous versions when VersionInfo changes! -->
-    <Delete Files="$(GamePath)GadgetCore\Mods\$(AssemblyName)_v$(VersionInfo).zip" />
-    <Delete Files="$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip" />
-    <Exec Command="&quot;C:\Program Files\7-Zip\7z.exe&quot; a -tzip &quot;$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip&quot; &quot;$(TargetDir)*&quot; -x!&quot;$(AssemblyName).zip&quot;" />
-    <Copy SourceFiles="$(TargetDir)$(AssemblyName)_v$(VersionInfo).zip" DestinationFolder="$(GamePath)GadgetCore\Mods\" SkipUnchangedFiles="true" />
-  </Target>
+	<UsingTask TaskName="GetFileVersion" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+		<ParameterGroup>
+			<AssemblyPath ParameterType="System.String" Required="true" />
+			<Version ParameterType="System.String" Output="true" />
+			<TrimmedVersion ParameterType="System.String" Output="true" />
+		</ParameterGroup>
+		<Task>
+			<Using Namespace="System.Diagnostics" />
+			<Using Namespace="System.Text" />
+			<Using Namespace="System.Linq" />
+			<Code Type="Fragment" Language="cs">
+				<![CDATA[
+      this.Version = FileVersionInfo.GetVersionInfo(this.AssemblyPath).FileVersion;  
+      this.TrimmedVersion = this.Version.Split('.').TakeWhile(x => !x.Equals("0")).Aggregate(new StringBuilder(), (a, b) => { if (a.Length > 0) a.Append("."); a.Append(b); return a; }).ToString();
+      if (this.TrimmedVersion.IndexOf('.') == -1) this.TrimmedVersion += ".0";
+    ]]>
+			</Code>
+		</Task>
+	</UsingTask>
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<GetFileVersion AssemblyPath="$(TargetPath)">
+			<Output TaskParameter="Version" PropertyName="ModFullVersion" />
+			<Output TaskParameter="TrimmedVersion" PropertyName="AssemblyFileVersion" />
+		</GetFileVersion>
+		<ItemGroup>
+			<OldZip Include="$(TargetDir)$(AssemblyName)_v*.zip" />
+			<OldDest Include="$(GamePath)GadgetCore\Mods\$(AssemblyName)_v*.zip" />
+		</ItemGroup>
+		<Delete Files="@(OldZip)" />
+		<Delete Files="@(OldDest)" />
+		<MakeDir Directories="$(TargetDir)..\BuildCache\" />
+		<ZipDirectory SourceDirectory="$(TargetDir)" DestinationFile="$(TargetDir)..\BuildCache\$(AssemblyName)_v$(AssemblyFileVersion).zip" />
+		<Copy SourceFiles="$(TargetDir)..\BuildCache\$(AssemblyName)_v$(AssemblyFileVersion).zip" DestinationFiles="$(TargetDir)$(AssemblyName)_v$(AssemblyFileVersion).zip" />
+		<RemoveDir Directories="$(TargetDir)..\BuildCache\" />
+		<MakeDir Directories="$(GamePath)GadgetCore\Mods\" />
+		<Copy SourceFiles="$(TargetDir)$(AssemblyName)_v$(AssemblyFileVersion).zip" DestinationFiles="$(GamePath)GadgetCore\Mods\$(AssemblyName)_v$(AssemblyFileVersion).zip" />
+		<Message Importance="High" Text="Mod Exported to $(GamePath)GadgetCore\Mods\$(AssemblyName)_v$(AssemblyFileVersion).zip" />
+	</Target>
 </Project>

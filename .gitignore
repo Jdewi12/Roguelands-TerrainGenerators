@@ -1,6 +1,5 @@
 *.suo
 *.user
-*.sln
 _ReSharper.*
 .vs
 bin

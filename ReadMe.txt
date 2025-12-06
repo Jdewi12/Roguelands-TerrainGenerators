@@ -1,3 +1,5 @@
+Replaces the level generator for planets with custom procedural terrain generators depending on the planet type.
+
 ---
 Open Source Instructions for Mod Creator:
 ---
