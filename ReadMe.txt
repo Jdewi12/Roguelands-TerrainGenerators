@@ -1,23 +1,17 @@
 Replaces the level generator for planets with custom procedural terrain generators depending on the planet type.
 
----
-Open Source Instructions for Mod Creator:
----
- 1. Add GamePaths.xml to .gitignore before your first commit, and manually upload GamePaths.xml with the defaults.
- 2. Instruct your users to modify GamePaths.xml before they open the project.
 
+To build this project without modifying the .csproj file you need to add a file called "GamePaths.xml" to the folder ABOVE this one, with the following content:
 
----
-Open Source Instructions for Users:
----
- 1. Install Visual Studio 2017 or higher.
- 2. Install UMF + Roguelands.
- 3. Install UMF (uMod Framework) v0.53.0 or higher into the game.
- 4. Clone or download this project.
- 5. Edit GamePaths.xml and change the paths to where your game is installed.
- 6. Load the project up in Visual Studio by double clicking Dungeons.sln.
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <!-- Set this full path to your game folder. Must contain a slash at the end. -->
+    <GamePath>C:\Program Files (x86)\Steam\steamapps\common\Roguelands\</GamePath>
 
+    <!-- Set this partial path to the game's Managed folder. Must contain a slash at the end. -->
+    <ManagedFolder>Roguelands_Data\Managed\</ManagedFolder>
+  </PropertyGroup>
+</Project>
 
----
-See the Mod Creation page on the UMF Wiki for all help with modding and coding.
-https://umodframework.com/wiki/modcreation
+Note that `GamePath` may need to be changed, depending on the nature of your installation.
