@@ -1,0 +1,1 @@
+Replaces the level generator for planets with custom procedural terrain generators depending on the planet. Compatible with custom planets and the Minimap mods.
