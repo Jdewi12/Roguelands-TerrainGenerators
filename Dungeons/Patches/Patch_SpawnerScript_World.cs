@@ -231,7 +231,7 @@ namespace TerrainGenerators.Patches
                 case 4: // Ancient Ruins
                     return new MagiciteLike();
                 case 5: // Plaguelands
-                    return new Canyon();
+                    return new Canyon(GridWidth = 38); // bigger to make sure there are enough hives to make plague beast vulnerable
                 case 6: // Byfrost
                     return new Caves();
                 case 7: // Molten Crag
@@ -245,7 +245,7 @@ namespace TerrainGenerators.Patches
                 case 12: // Forbidden Arena
                     return new MagiciteLike();
                 case 13: // Cathedral
-                    return new Rooms();
+                    return new Cathedral();
                 default:
                     return new Caves();
             }

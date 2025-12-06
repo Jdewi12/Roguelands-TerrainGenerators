@@ -14,10 +14,18 @@ namespace TerrainGenerators.Generators
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
         //public override Color MinimapWallsColor => new Color(0f, 1f, 0f);
-        public override int GridWidth => 32;
-        public override int GridHeight => 24;
+        public override int GridWidth => gridWidth;
+        private int gridWidth;
+        public override int GridHeight => gridHeight;
+        private int gridHeight;
         public override bool[,] WallsGrid => wallsGrid;
         private bool[,] wallsGrid;
+
+        public Canyon(int gridWidth = 32, int gridHeight = 24)
+        {
+            this.gridWidth = gridWidth;
+            this.gridHeight = gridHeight;
+        }
 
         public override void GenerateWalls(RNG rng)
         {
@@ -173,7 +181,10 @@ namespace TerrainGenerators.Generators
             //SpawnAirSpawnables(rng, wallsGrid);
         }
 
-        public static int CanyonParabola(int x, int width, int height)
+
+        /// <param name="exponent">Higher number = more square. Should be even (odd numbers won't work, though some decimal ones should).</param>
+        /// <returns></returns>
+        public static int CanyonParabola(int x, int width, int height, int minY = 1, float exponent = 4f)
         {
             if (x < 1 || x > width - 2)
                 return height;
@@ -185,11 +196,9 @@ namespace TerrainGenerators.Generators
             int res = Mathf.RoundToInt(Mathf.Pow(Mathf.Tan(innertan), 2) / (48 / height) + (width + 16 * height - 34) / 112 + 1);
             */
             // Desmos: \left(h-1\right)\left(\frac{\left(x-\frac{w}{2}\right)}{\frac{w}{2}}\right)^{4}+1
-            float exponent = 4f; // should be even. Higher is more square.
-            int baseY = 1;
             int res = Mathf.RoundToInt(
                 Mathf.Pow(x / ((width - 1) / 2f) - 1, exponent)
-                * (height - baseY) + baseY);
+                * (height - minY) + minY);
             //TerrainGenerators.Log(res.ToString());
             if (res < 0)
                 return 0;

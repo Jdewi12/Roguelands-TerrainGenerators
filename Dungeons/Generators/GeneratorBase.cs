@@ -315,7 +315,7 @@ namespace TerrainGenerators.Generators
             List<Vector2Int> groundSpawnSpots = new List<Vector2Int>();
             for (int x = 0; x < width; x++)
             {
-                for (int y = 0; y < height - 1; y++)
+                for (int y = -1; y < height - 1; y++) // start from -1 because these are the ground tiles underneath the spawn spot
                 {
                     if (x == PlayerSpawn.x && (y == PlayerSpawn.y)) // the player spawns here
                         continue;
@@ -333,6 +333,7 @@ namespace TerrainGenerators.Generators
                     }
                 }
             }
+
 
             Dictionary<Vector2Int, float> distancesFromSpawn = new Dictionary<Vector2Int, float>();
             Vector2Int startPos = PlayerSpawn;
@@ -392,10 +393,26 @@ namespace TerrainGenerators.Generators
                 vec => distancesFromSpawn.TryGetValue(vec + Vector2Int.up, out float dist) ? dist : Vector2.Distance(vec + Vector2Int.up, PlayerSpawn)
                 ).ToList();
 
+            // loop from closest to furthest, destroying spawn spots where the number of spawn spots is too dense.
+            for(int i = groundSpawnSpots.Count - 1; i >= 0; i--)
+            {
+                var pos = groundSpawnSpots[i];
+                int leftX = pos.x - 1;
+                int rightX = pos.x + 1;
+                int botX = pos.y - 3;
+                int topX = pos.y + 3;
+                // numNearbySpots includes the spot i
+                int numNearbySpots = groundSpawnSpots.Count(spot => spot.x >= leftX && spot.x <= rightX && spot.y >= botX && spot.y <= topX);
+                if (numNearbySpots > 3)
+                    groundSpawnSpots.RemoveAt(i);
+            }
+
+            TerrainGenerators.Log("Spawn spots: " + groundSpawnSpots.Count);
+
             bool spawnedSpecial = false;
             while (groundSpawnSpots.Count > 0)
             {
-                if(SpawnerScript.curBiome == 12 && !spawnedSpecial)
+                if(SpawnerScript.curBiome == 12 && !spawnedSpecial) // Arena
                 {
                     // spawn chalice close to player
                     Vector2Int bookSpot = distancesFromSpawn.FirstOrDefault(posAndDist => 
@@ -413,10 +430,11 @@ namespace TerrainGenerators.Generators
                     Spawned.Add(book);
                     spawnedSpecial = true;
                 }
+
                 // pick one of n furthest spots from the player remaining
-                int i = rng.Next(0, 10); // upper bound exclusive 
-                if(i >= groundSpawnSpots.Count)
-                    i = groundSpawnSpots.Count - 1;
+                const float portalDistanceMaxPercentileFromEnd = 0.2f;
+                int maxIndex = Mathf.RoundToInt(portalDistanceMaxPercentileFromEnd * (groundSpawnSpots.Count - 1));
+                int i = rng.Next(0, maxIndex + 1);
                 Vector2Int spawnSpot = groundSpawnSpots[i];
                 groundSpawnSpots.RemoveAt(i);
                 //TerrainGenerators.Log($"({spawnSpot.x},{spawnSpot.y}) {(distancesFromSpawn.TryGetValue(spawnSpot + Vector2Int.up, out float dist) ? dist.ToString() : "?")}");
@@ -426,15 +444,16 @@ namespace TerrainGenerators.Generators
                 }
                 else
                 {
-                    DoVanillaGroundSpawn(spawnSpot, rng);
+                    float multiplier = 1; // todo: ?
+                    DoVanillaGroundSpawn(spawnSpot, rng, multiplier);
                 }
             }
         }
 
-        public virtual void DoVanillaGroundSpawn(Vector2Int spawnSpot, RNG rng)
+        public virtual void DoVanillaGroundSpawn(Vector2Int spawnSpot, RNG rng, float chanceMultiplier)
         {
             // an objective (resource machine) can spawn in addition to normal spawns.
-            float objectiveChance = 0.08f * BlockSize / 16; // 8% per chunks at size 16; 4% at size 8
+            float objectiveChance = 0.08f * BlockSize / 16 * chanceMultiplier; // 8% per chunks at size 16; 4% at size 8
             if (rng.Next(0f, 1f) < objectiveChance) //
                 SpawnObjective(spawnSpot.x, spawnSpot.y);
 
@@ -443,18 +462,18 @@ namespace TerrainGenerators.Generators
             // each spawn gets at least minSpacing world units of space (before randomness or offset in spawn pos)
             const float minSpacing = 5f;
             const float rngVariation = 1f; // todo: Scale with BlockSize?
-            int spawnsPerChunk = Mathf.FloorToInt(BlockSize / minSpacing);
-            if (spawnsPerChunk < 1)
-                spawnsPerChunk = 1;
-            float spawnSeparation = BlockSize / spawnsPerChunk;
+            int spotsPerChunk = Mathf.FloorToInt(BlockSize / minSpacing);
+            if (spotsPerChunk < 1)
+                spotsPerChunk = 1;
+            float spotSeparation = BlockSize / spotsPerChunk;
 
-            for (int s = 0; s < spawnsPerChunk; s++)
+            for (int s = 0; s < spotsPerChunk; s++)
             {
-                float spawnsPerM = spawnsPerChunk / BlockSize;
-                float spawnChance = 0.67f / spawnsPerM * (3/16f); // try to spawn around 2 spawnables every 16 units
+                float spotsPerM = spotsPerChunk / BlockSize;
+                float spawnChance = 0.67f / spotsPerM * (3/16f) * chanceMultiplier; // try to spawn around 2 spawnables every 16 units
                 if (rng.Next(0f, 1f) > spawnChance)
                     continue;
-                float distanceIn = s * spawnSeparation + spawnSeparation / 2f;
+                float distanceIn = s * spotSeparation + spotSeparation / 2f;
                 ChunkScript.transform.position = (Vector3)WorldOffset + new Vector3(
                     x: (spawnSpot.x - 0.5f) * BlockSize + distanceIn + rng.Next(-rngVariation, rngVariation),
                     y: (spawnSpot.y + 0.5f) * BlockSize + 0.375f,

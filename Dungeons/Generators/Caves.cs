@@ -264,8 +264,6 @@ namespace TerrainGenerators.Generators
                 d0 += kv;
 
             }
-
-
         }
 
         public static void BresenhamLineDraw(float x, float y, float d, float len, float sd1x, float sd1y, float dd1x, float dd1y, float d1, float kt, float kv, float kd, ref bool[,] grid)
