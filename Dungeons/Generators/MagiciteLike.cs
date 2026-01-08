@@ -214,7 +214,7 @@ namespace TerrainGenerators.Generators
                     branchName += "2";
                 if (TerrainGenerators.OtherTextures.TryGetValue(branchName + ".png", out Texture2D tex))
                 {
-                    float branchOffset = Mathf.FloorToInt(rng.Next(-0.25f, 0.25f) * BlockSize * 8) / 8f + 1/16f; // up to 25% of a block vertically
+                    float branchOffset = 0;//Mathf.FloorToInt(rng.Next(-0.25f, 0.25f) * BlockSize * 8) / 8f + 1/16f; // up to 25% of a block vertically
                     GameObject tile = GameObject.Instantiate(TerrainGenerators.TilePrefab, (Vector3)GeneratorBase.WorldOffset + new Vector3((x - 0.25f) * BlockSize, y * BlockSize + branchOffset, branchZ), Quaternion.Euler(180, 0, 0));
                     Spawned.Add(tile);
                     tile.transform.localScale = new Vector3(0.5f, 26f / 128f, 1) * BlockSize / 2;
@@ -243,7 +243,7 @@ namespace TerrainGenerators.Generators
                     texName += "2";
                 if (TerrainGenerators.OtherTextures.TryGetValue(texName + ".png", out Texture2D tex))
                 {
-                    float branchOffset = Mathf.FloorToInt(rng.Next(-0.25f, 0.25f) * BlockSize * 8) / 8f + 1 / 16f; // up to 25% of a block vertically
+                    float branchOffset = 0;//Mathf.FloorToInt(rng.Next(-0.25f, 0.25f) * BlockSize * 8) / 8f + 1 / 16f; // up to 25% of a block vertically
                     GameObject tile = GameObject.Instantiate(TerrainGenerators.TilePrefab, (Vector3)GeneratorBase.WorldOffset + new Vector3((x + 0.25f) * BlockSize, y * BlockSize + branchOffset, branchZ), Quaternion.Euler(180, 0, 0));
                     Spawned.Add(tile);
                     tile.transform.localScale = new Vector3(0.5f, 26f / 128f, 1) * BlockSize / 2;
