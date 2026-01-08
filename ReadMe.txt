@@ -1,5 +1,7 @@
 Replaces the level generator for planets with custom procedural terrain generators depending on the planet type.
 
+Note: The code is a bit of a mess, mainly because it was started a long time ago (over 5 years!) and I haven't taken the time to clean it up.
+
 
 To build this project without modifying the .csproj file you need to add a file called "GamePaths.xml" to the folder ABOVE this one, with the following content:
 
