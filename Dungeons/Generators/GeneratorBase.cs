@@ -271,20 +271,26 @@ namespace TerrainGenerators.Generators
             Spawned.Add((GameObject)Network.Instantiate((GameObject)Resources.Load("objective/objective1"), new Vector3(worldX, worldY, 4.75f /*z may vary a bit*/), Quaternion.identity, 0));
         }
 
+        /// <summary>
+        /// No longer used, in favour of using vanilla teleporter spawning to be more compatible with other mods, such as Loop Portal
+        /// </summary>
         public virtual void SpawnTeleporter(int x, int y, int id)
         {
             float worldX = WorldOffset.x + x * BlockSize;
             float worldY = WorldOffset.y + (y + 0.5f) * BlockSize;
             int nextBiome;
-            if (id == 3)
-                //nextBiome = 98; // back to ship
-                nextBiome = SpawnerScript.curBiome;
-            else
+            /*
+            if (id == 3) // if a 4th portal is spawned (e.g. loop portal mod) it goes to same biome
             {
-                nextBiome = new EntranceScript().GetPotentialBiome(SpawnerScript.curBiome);
+                nextBiome = SpawnerScript.curBiome;
             }
+            else
+            {*/
+                nextBiome = new EntranceScript().GetPotentialBiome(SpawnerScript.curBiome);
+            //}
 
             GameScript.endPortal[id] = (GameObject)Network.Instantiate((GameObject)Resources.Load("portal"), new Vector3(worldX, worldY + 1.75f, -1f), Quaternion.identity, 0);
+            TerrainGenerators.Log("Portal name: " + GameScript.endPortal[id].name);
             GameScript.endPortalUA[id] = GameScript.endPortal[id].transform.GetChild(0).gameObject;
 #pragma warning disable CS0618 // Type or member is obsolete
             GameScript.endPortal[id].GetComponent<NetworkView>().RPC("Activate", RPCMode.All, new object[0]);
@@ -294,6 +300,7 @@ namespace TerrainGenerators.Generators
                 0,
                 id
             });
+            
 #pragma warning restore CS0618 // Type or member is obsolete
             TeleporterPositions.Add(new Vector2Int(x, y));
             Spawned.Add(GameScript.endPortal[id]);
@@ -410,6 +417,8 @@ namespace TerrainGenerators.Generators
             TerrainGenerators.Log("Spawn spots: " + groundSpawnSpots.Count);
 
             bool spawnedSpecial = false;
+            List<GameObject> teleporterSpots = new List<GameObject>();
+            int teleportersToSpawn = Gadgets.GetGadget("LoopPortal")?.Enabled == true ? 4 : 3;
             while (groundSpawnSpots.Count > 0)
             {
                 if(SpawnerScript.curBiome == 12 && !spawnedSpecial) // Arena
@@ -438,9 +447,28 @@ namespace TerrainGenerators.Generators
                 Vector2Int spawnSpot = groundSpawnSpots[i];
                 groundSpawnSpots.RemoveAt(i);
                 //TerrainGenerators.Log($"({spawnSpot.x},{spawnSpot.y}) {(distancesFromSpawn.TryGetValue(spawnSpot + Vector2Int.up, out float dist) ? dist.ToString() : "?")}");
-                if (TeleporterPositions.Count < 3)
+                /*if (TeleporterPositions.Count < 3 || (TeleporterPositions.Count == 3 && Gadgets.GetGadget("LoopPortal")?.Enabled == true))
                 {
                     SpawnTeleporter(spawnSpot.x, spawnSpot.y, TeleporterPositions.Count);
+                }*/
+                if(teleporterSpots.Count < teleportersToSpawn)
+                {
+                    var spot = new GameObject("Teleporter Spot");
+                    spot.transform.position = new Vector3(
+                        WorldOffset.x + spawnSpot.x * BlockSize, 
+                        WorldOffset.y + (spawnSpot.y + 0.5f) * BlockSize + 0.55f,
+                        0f);
+                    teleporterSpots.Add(spot);
+                    Spawned.Add(spot);
+                    if (teleporterSpots.Count == teleportersToSpawn)
+                    {
+                        var entranceScript = new GameObject("EntranceScript").AddComponent<EntranceScript>();
+                        entranceScript.spawnSpot = teleporterSpots.ToArray();
+                        entranceScript.SpawnEndPortal();
+                        // todo: Patch EntranceScript.Start
+                        entranceScript.enabled = false; // prevent start running
+                        Spawned.Add(entranceScript.gameObject);
+                    }
                 }
                 else
                 {

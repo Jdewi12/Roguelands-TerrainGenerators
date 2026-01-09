@@ -29,7 +29,7 @@ namespace TerrainGenerators
         public static NetworkView RPCHandler;
         public static Thread TextureThread = null;
 
-        public const string MOD_VERSION = "1.3";
+        public const string MOD_VERSION = "1.4";
         public const string CONFIG_VERSION = "1.0";
 
         internal static MinimapAPI MinimapAPI;
