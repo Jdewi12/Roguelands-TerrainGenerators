@@ -50,8 +50,6 @@ namespace TerrainGenerators.Patches
                     i++;
                     continue;
                 }
-                if (instruction.operand != null)
-                    TerrainGenerators.Log("Operand " + instruction.operand.ToString());
                 yield return instruction;
             }
         }
