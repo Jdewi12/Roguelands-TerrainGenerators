@@ -17,6 +17,7 @@ namespace TerrainGenerators.Patches
     [HarmonyGadget("TerrainGenerators")]
     public static class Patch_SpawnerScript_World
     {
+        // todo: A bunch of leftover, unused stuff; remove!
         public static int BlockSize = 8;
         public static int GridWidth = 32;
         public static int GridHeight = 24;
@@ -221,17 +222,16 @@ namespace TerrainGenerators.Patches
             {
                 case 0: // Desolate Canyon
                     return new Canyon();
-                    //return new Rooms(); // TODO: FIX THIS!!!!!
                 case 1: // Deep Jungle
                     return new MagiciteLike();
                 case 2: // Hollow Caverns
-                    return new Caves();
+                    return new Caves(gridWidth: 50); // to increase rocks to spawn rock scarab
                 case 3: // Shroomtown
                     return new MagiciteLike();
                 case 4: // Ancient Ruins
                     return new MagiciteLike();
                 case 5: // Plaguelands
-                    return new Canyon(GridWidth = 38); // bigger to make sure there are enough hives to make plague beast vulnerable
+                    return new Canyon(gridWidth: 52); // to increase hives to make plague beast vulnerable
                 case 6: // Byfrost
                     return new Caves();
                 case 7: // Molten Crag

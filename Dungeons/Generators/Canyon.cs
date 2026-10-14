@@ -21,7 +21,7 @@ namespace TerrainGenerators.Generators
         public override bool[,] WallsGrid => wallsGrid;
         private bool[,] wallsGrid;
 
-        public Canyon(int gridWidth = 32, int gridHeight = 24)
+        public Canyon(int gridWidth = 40, int gridHeight = 24)
         {
             this.gridWidth = gridWidth;
             this.gridHeight = gridHeight;

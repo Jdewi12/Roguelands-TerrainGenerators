@@ -13,7 +13,7 @@ namespace TerrainGenerators.Generators
     {
         public override Vector2Int PlayerSpawn => playerSpawn;
         private Vector2Int playerSpawn;
-        private int mazeCols = 6;
+        private int mazeCols = 7;
         private int colWidth = 8;
         private int minVerticalTunnelThickness = 2;
         private int mazeRows = 3;

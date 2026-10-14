@@ -25,7 +25,7 @@ namespace TerrainGenerators.Generators
         bool[,] wallsGrid;
 
 
-        public Caves(Color? minimapWallsColor = null, int gridWidth = 38, int gridHeight = 18)
+        public Caves(Color? minimapWallsColor = null, int gridWidth = 42, int gridHeight = 18)
         {
             if (minimapWallsColor != null)
                 this.minimapWallsColor = minimapWallsColor.Value;
@@ -42,7 +42,7 @@ namespace TerrainGenerators.Generators
             if (numNodes < 2)
                 numNodes = 2;
             //int numNodes = 1 + Mathf.RoundToInt((GridWidth / 7f * BlockSize / 16) * (GridHeight / 7f * BlockSize / 16) + rng.Next(0f, 2f));
-            float maxRadius = Mathf.Clamp(Mathf.Min(GridWidth, GridHeight) - 2, min: 1, max: 4) * 8 / BlockSize; // scale up radius as blocksize gets smaller
+            float maxRadius = Mathf.Clamp(Mathf.Min(GridWidth, GridHeight) - 2, min: 1, max: 4.7f) * 8 / BlockSize; // scale up radius as blocksize gets smaller
             float maxRadiusSqrt = Mathf.Sqrt(maxRadius);
 
             List<OneWayGridNode> unconnectedRooms = new List<OneWayGridNode>();
@@ -108,7 +108,6 @@ namespace TerrainGenerators.Generators
             {
                 for (int x = 0; x < GridWidth; x++)
                 {
-                
                     if(wallsGrid[x, y] == false && wallsGrid[x, y - 1] == true)
                     {
                         playerSpawn = new Vector2Int(x, y);
@@ -141,7 +140,7 @@ namespace TerrainGenerators.Generators
             for (int i = -radius; i <= radius; i++)
                 for (int j = -radius; j <= radius; j++)
                 {
-                    if (Mathf.Pow(i, 2) + Mathf.Pow(j, 2) < radiusSquared)
+                    if (i*i + j*j < radiusSquared)
                     {
                         grid[position.x + i, position.y + j] = false;
                     }
